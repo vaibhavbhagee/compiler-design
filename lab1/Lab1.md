@@ -11,26 +11,34 @@
 ```C
 YY_DECL // macro for yylex()
 {
-	yy_state_type yy_current_state;
+	yy_state_type yy_current_state; //current state of the DFA
 	char *yy_cp, *yy_bp;
-	int yy_act;
+	int yy_act; // action number to be taken in the current state
     
-	if ( !(yy_init) )
+	if ( !(yy_init) ) // checks if initialization of file pointers and buffers has not already been done
 		{
 		(yy_init) = 1;
 
 		if ( ! (yy_start) )
 			(yy_start) = 1;	/* first start state */
+		
+		// Set global input and output streams to standard input and output if not already set to files
+
 		if ( ! yyin )
 			yyin = stdin;
 		if ( ! yyout )
 			yyout = stdout;
+
+		// This checks if a buffer is available for storing characters, if not, creates a buffer
+
 		if ( ! YY_CURRENT_BUFFER ) {
 			yyensure_buffer_stack ();
 			YY_CURRENT_BUFFER_LVALUE =
-				yy_create_buffer(yyin,YY_BUF_SIZE );
+				yy_create_buffer(yyin,YY_BUF_SIZE ); // creates a buffer to use
 		}
-		yy_load_buffer_state( );
+
+		// Loads the buffer state
+		yy_load_buffer_state( ); // loads the buffer state in the relevant global variables
 		}
 
 	{
@@ -38,32 +46,45 @@ YY_DECL // macro for yylex()
 
 #line 1035 "c.lex.cpp"
 
-	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
+	while ( /*CONSTCOND*/1 )		// The main lexing loop
 		{
-		yy_cp = (yy_c_buf_p);
-		/* Support of yytext. */
-		*yy_cp = (yy_hold_char);
-		/* yy_bp points to the position in yy_ch_buf of the start of
+		yy_cp = (yy_c_buf_p);    // stores the location before entering in the loop, in the buffer
+		
+		*yy_cp = (yy_hold_char); 
+		
+    /* yy_bp points to the position in yy_ch_buf of the start of
 		 * the current run.
 		 */
 		yy_bp = yy_cp;
 
-		yy_current_state = (yy_start);
+		yy_current_state = (yy_start); // starts the DFA at the start state
+
 yy_match:
 		do
 			{
 			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)] ;
+
+      // Check if this state is accepting, if yes, then save the character pointer and state
+      // The lexing won't stop here as we want maximal munch
+
 			if ( yy_accept[yy_current_state] )
 				{
 				(yy_last_accepting_state) = yy_current_state;
 				(yy_last_accepting_cpos) = yy_cp;
 				}
+
+
 			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 				{
 				yy_current_state = (int) yy_def[yy_current_state];
 				if ( yy_current_state >= 385 )
 					yy_c = yy_meta[(unsigned int) yy_c];
 				}
+
+      // Decide the next state based on current state and the character
+      // Double displacement technique has been used to flatten 2D tables to 1D tables
+      // The character pointer is incremented
+        
 			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
 			++yy_cp;
 			}
