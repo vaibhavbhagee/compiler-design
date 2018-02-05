@@ -7,15 +7,10 @@
 #### Flex generated Lexer
 
 * Generates a Deterministic Finite Automata to take in a stream of input and generate a stream of tokens
-
 * Main method is `yylex()`, aliased as `YY_DECL`
-
 * It is usually run as co-routine to the parsing routine - returns a value and switches out, and resumes lexing on each call to `yylex()`
-
 * Using the flag `-CF` makes the lexer generate uncompressed transition tables, which makes the lexer algorithm easier to study
-
 * By default, the lexer uses various optimisations such as DFA minimisation, double displacement, etc. to reduce the size of the tables
-
   ##### Generated Tables
 
   * Flex can generate a full state transition table for FA - a 1D array of (symbol, next state), indexed by current state, or by default smaller, 1D arrays
@@ -45,7 +40,6 @@
   			yyout = stdout;
 
   		// This checks if a buffer is available for storing characters, if not, creates a buffer
-
   		if ( ! YY_CURRENT_BUFFER ) {
   			yyensure_buffer_stack ();
   			YY_CURRENT_BUFFER_LVALUE =
@@ -58,27 +52,22 @@
 
   	{
   #line 39 "c.l"
-
   #line 1035 "c.lex.cpp"
 
   	while ( /*CONSTCOND*/1 )		// The main lexing loop
-  		{
-  		yy_cp = (yy_c_buf_p);    // stores the location before entering in the loop, in the buffer
-  		
+  		{ // stores the location before entering in the loop, in the buffer
+  		yy_cp = (yy_c_buf_p);    
   		*yy_cp = (yy_hold_char); 
   		
-      /* yy_bp points to the position in yy_ch_buf of the start of
-  		 * the current run.
-  		 */
+      	// yy_bp points to the position in yy_ch_buf of the start of the current run
   		yy_bp = yy_cp;
-
   		yy_current_state = (yy_start); // starts the DFA at the start state
 
   yy_match:
   		do
   			{
   			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)] ;
-
+            
         // Check if this state is accepting, if yes, then save the character pointer and state
         // The lexing won't stop here as we want maximal munch
 
@@ -87,7 +76,12 @@
   				(yy_last_accepting_state) = yy_current_state;
   				(yy_last_accepting_cpos) = yy_cp;
   				}
-  		while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
+
+        // Checks if we are supposed to take the default action in this state
+        // Repeatedly takes the default actions and updates the current state
+        // This is an optimization to reduce the size of the transition tables of the DFA
+
+  			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
   				{
   				yy_current_state = (int) yy_def[yy_current_state];
   				if ( yy_current_state >= 385 )
@@ -101,10 +95,12 @@
   			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
   			++yy_cp;
   			}
-  		while ( yy_base[yy_current_state] != 699 );
+  		while ( yy_base[yy_current_state] != 699 ); // Checks if there is no rule which can match the string further
 
   yy_find_action:
+      // Find the action to be performed and perform the action
   		yy_act = yy_accept[yy_current_state];
+
   		if ( yy_act == 0 )
   			{ /* have to back up */
   			yy_cp = (yy_last_accepting_cpos);
@@ -112,8 +108,11 @@
   			yy_act = yy_accept[yy_current_state];
   			}
 
+      // Before performing the action, the current state of the buffer and the information
+      // related to the lexeme are stored
   		YY_DO_BEFORE_ACTION;
 
+      // Checks for newline characters and updates the line number is location
   		if ( yy_act != YY_END_OF_BUFFER && yy_rule_can_match_eol[yy_act] )
   			{
   			yy_size_t yyl;
@@ -122,6 +121,8 @@
       yylineno++;
   ;
   			}
+
+  // Code to perform the action which was chosen in the previous step
 
   do_action:	/* This label is used only to access EOF actions. */
   		switch ( yy_act ) { // switch over actions
@@ -140,7 +141,7 @@
   case 2:
   YY_RULE_SETUP
   #line 41 "c.l"
-  { /* consume //-comment */ }
+  { /* consume //-comment */ } // Actions as specified in the lex file by the user
   	YY_BREAK
   // cases for many tokens ommitted
   // ...
@@ -151,134 +152,23 @@
   	YY_BREAK
   #line 1644 "c.lex.cpp"
   case YY_STATE_EOF(INITIAL): // End of File Reached
-  	yyterminate();
+  	yyterminate(); // returns 0
 
   	case YY_END_OF_BUFFER:
   		{
-  		/* Amount of text matched not including the EOB char. */
-  		int yy_amount_of_matched_text = (int) (yy_cp - (yytext_ptr)) - 1;
+  		   // here it checks if the buffer ended or the file ended and whether
+         // the yyin was pointed to a new input stream
 
-  		/* Undo the effects of YY_DO_BEFORE_ACTION. */
-  		*yy_cp = (yy_hold_char);
-  		YY_RESTORE_YY_MORE_OFFSET
+         // If latter is the case, the lexing resumes from where it stopped last
+  		}
 
-  		if ( YY_CURRENT_BUFFER_LVALUE->yy_buffer_status == YY_BUFFER_NEW )
-  			{
-  			/* We're scanning a new file or input source.  It's
-      *  possible that this happened because the user
-           just pointed yyin at a new source and called
-           			 * yylex().  If so, then we have to assure
-           			 * consistency between YY_CURRENT_BUFFER and our
-           			 * globals.  Here is the right place to do so, because
-           			 * this is the first action (other than possibly a
-           			 * back-up) that will match for the new input source.
-           			 */
-           			(yy_n_chars) = YY_CURRENT_BUFFER_LVALUE->yy_n_chars;
-           			YY_CURRENT_BUFFER_LVALUE->yy_input_file = yyin;
-           			YY_CURRENT_BUFFER_LVALUE->yy_buffer_status = YY_BUFFER_NORMAL;
-           			}
-           	
-           		/* Note that here we test for yy_c_buf_p "<=" to the position
-           		 * of the first EOB in the buffer, since yy_c_buf_p will
-           		 * already have been incremented past the NUL character
-           		 * (since all states make transitions on EOB to the
-           		 * end-of-buffer state).  Contrast this with the test
-           		 * in input().
-           		 */
-           		if ( (yy_c_buf_p) <= &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[(yy_n_chars)] )
-           			{ /* This was really a NUL. */
-           			yy_state_type yy_next_state;
-           	
-           			(yy_c_buf_p) = (yytext_ptr) + yy_amount_of_matched_text;
-           	
-           			yy_current_state = yy_get_previous_state(  );
-           	
-           			/* Okay, we're now positioned to make the NUL
-           			 * transition.  We couldn't have
-           			 * yy_get_previous_state() go ahead and do it
-           			 * for us because it doesn't know how to deal
-           			 * with the possibility of jamming (and we don't
-           			 * want to build jamming into it because then it
-           			 * will run more slowly).
-           			 */
-           			yy_next_state = yy_try_NUL_trans( yy_current_state );
-           			yy_bp = (yytext_ptr) + YY_MORE_ADJ;
-           	
-           			if ( yy_next_state )
-           				{
-           				/* Consume the NUL. */
-           				yy_cp = ++(yy_c_buf_p);
-           				yy_current_state = yy_next_state;
-           				goto yy_match;
-           				}
-           			else
-           				{
-           				yy_cp = (yy_c_buf_p);
-           				goto yy_find_action;
-           				}
-           			}
-           	
-           		else switch ( yy_get_next_buffer(  ) )
-           			{
-           			case EOB_ACT_END_OF_FILE:
-           				{
-           				(yy_did_buffer_switch_on_eof) = 0;
-           	
-           				if ( yywrap( ) )
-           					{
-           					/* Note: because we've taken care in
-           					 * yy_get_next_buffer() to have set up
-           					 * yytext, we can now set up
-           					 * yy_c_buf_p so that if some total
-           					 * hoser (like flex itself) wants to
-           					 * call the scanner after we return the
-           					 * YY_NULL, it'll still work - another
-           					 * YY_NULL will get returned.
-           					 */
-           					(yy_c_buf_p) = (yytext_ptr) + YY_MORE_ADJ;
-           	
-           					yy_act = YY_STATE_EOF(YY_START);
-           					goto do_action;
-           					}
-           				else
-           					{
-           					if ( ! (yy_did_buffer_switch_on_eof) )
-           						YY_NEW_FILE;
-           					}
-           				break;
-           				}
-           	
-           			case EOB_ACT_CONTINUE_SCAN:
-           				(yy_c_buf_p) =
-           					(yytext_ptr) + yy_amount_of_matched_text;
-           	
-           				yy_current_state = yy_get_previous_state(  );
-           	
-           				yy_cp = (yy_c_buf_p);
-           				yy_bp = (yytext_ptr) + YY_MORE_ADJ;
-           				goto yy_match;
-           	
-           			case EOB_ACT_LAST_MATCH:
-           				(yy_c_buf_p) =
-           				&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[(yy_n_chars)];
-           	
-           				yy_current_state = yy_get_previous_state(  );
-           	
-           				yy_cp = (yy_c_buf_p);
-           				yy_bp = (yytext_ptr) + YY_MORE_ADJ;
-           				goto yy_find_action;
-           			}
-           		break;
-           		}
-           	
-           	default:
-           		YY_FATAL_ERROR(
-           			"fatal flex scanner internal error--no action found" );
-           	} /* end of action switch */
-           		} /* end of scanning one token */
-           	} /* end of user's declarations */
-             }
-  ​```C
+  	default:
+  		YY_FATAL_ERROR(
+  			"fatal flex scanner internal error--no action found" );
+  	} /* end of action switch */
+  		} /* end of scanning one token */
+  	} /* end of user's declarations */
+  }
   ```
 
 ***
@@ -288,12 +178,9 @@
 #### Bison generated Parser
 
 * The generated parser is supposed to be LALR(1)
-
 * Bison generates two files - 'c.tab.cpp' and 'c.tab.hpp' of which the header file defines all the token symbols and their mappings to integers, which is also used by the lexer for determining the output format
-
 * To study the algorithm of construction of parse tables the flag `--report = all`. This generates a report in 'c.output' which contains the ordering of the extended grammar rules and the LALR parsing tables used
-
-* ##### Generated Tables
+  ##### Generated Tables
 
   * Bison does not generate a LR parse table(state transition table for FA), but instead creates smaller, 1D arrays
 
@@ -317,6 +204,8 @@
     * `yypgoto` - 'present go to', maps (previous state, non-terminal) to next state
     * `yypact` - 'present action', describes what to do in a given state. It is a directory into `yytable` indexed by state number
     * `yycheck` - used for various checks - legal bounds within portions of `yytable`
+
+    ​
 
   ##### The `yyparse()` function
 
@@ -529,15 +418,14 @@
   }
   ```
 
-  * The parser also checks the stack for overflows, relocating the stacks when necessary
-  * Does lots of error checking. The parser has to get back to a sane state where the error token can be shifted next and print appropriate verbose output and be able to call yyerror()
-  * There is also cleanup code for symbols that are popped off the semantic stack to avoid memory leaks
+- - The parser also checks the stack for overflows, relocating the stacks when necessary
+  - Does lots of error checking. The parser has to get back to a sane state where the error token can be shifted next and print appropriate verbose output and be able to call yyerror()
+  - There is also cleanup code for symbols that are popped off the semantic stack to avoid memory leaks
 
-***
-
-
+------
 
 ### Sources consulted
 
 1. [Flex Manual](http://web.mit.edu/gnu/doc/html/flex_1.html)
 2. [Bison Manual](https://www.gnu.org/software/bison/manual/bison.html)
+
