@@ -12,6 +12,10 @@
 
 * It is usually run as co-routine to the parsing routine - returns a value and switches out, and resumes lexing on each call to `yylex()`
 
+* Using the flag `-CF` makes the lexer generate uncompressed transition tables, which makes the lexer algorithm easier to study
+
+* By default, the lexer uses various optimisations such as DFA minimisation, double displacement, etc. to reduce the size of the tables
+
   ##### Generated Tables
 
   * Flex can generate a full state transition table for FA - a 1D array of (symbol, next state), indexed by current state, or by default smaller, 1D arrays
@@ -284,6 +288,10 @@
 #### Bison generated Parser
 
 * The generated parser is supposed to be LALR(1)
+
+* Bison generates two files - 'c.tab.cpp' and 'c.tab.hpp' of which the header file defines all the token symbols and their mappings to integers, which is also used by the lexer for determining the output format
+
+* To study the algorithm of construction of parse tables the flag `--report = all`. This generates a report in 'c.output' which contains the ordering of the extended grammar rules and the LALR parsing tables used
 
 * ##### Generated Tables
 
