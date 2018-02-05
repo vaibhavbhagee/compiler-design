@@ -6,7 +6,12 @@
 
 #### Flex generated Lexer
 
-* plpl
+* ##### Generated Tables
+
+  - Flex can generate a full state transition table for FA - a 1D array of (symbol, next state), indexed by current state, or by default smaller, 1D arrays
+  - The transition table is compressed using double displacement - 2D table is flattened to 1D by
+    - Mapping all non-white-space entries into some location of the array, keeping the order of elements in each row intact
+    - Displacing each row by some amount such that no two non-white-space entries in each row occupy the same position
 
 ```C
 YY_DECL // macro for yylex()
@@ -246,6 +251,8 @@ case YY_STATE_EOF(INITIAL): // End of File Reached
 }
 ```
 
+***
+
 
 
 #### Bison generated Parser
@@ -257,17 +264,27 @@ case YY_STATE_EOF(INITIAL): // End of File Reached
   ##### Generated Tables
 
   * Bison does not generate a LR parse table(state transition table for FA), but instead creates smaller, 1D arrays
-  * The transition table is compressed using double displacement - 2D table is flattened ....
+
+  * As described for Flex, Bison uses double displacement to flatten the array
+
+    * Set of displacements is `D[i]`, in the displacements table `D` for each row `i`. Position `(i, j)` in the table is mapped to position `D[i] + j` in the array
+
+    * Thus in the final array made from the transition table, we index by state number and symbol number
+
+    * If the next look-ahead symbol has number k, table entry for state n is 
+
+      `T[ D[n] + k ]` for the final 1D array `T`
+
   * Some of the tables used : 
-    * `yytranslate` - 
-    * `yydefact` - 
-    * `yydefgoto` - 
-    * `yyr1` - 
-    * `yyr2` - 
-    * `yytable` - 
-    * `yypgoto` - 
-    * `yypact` - 
-    * `yycheck` - 
+    * `yytranslate` - maps lexical token numbers to their symbol numbers
+    * `yydefact` - 'default action', default reductions for each state
+    * `yydefgoto` - 'default go to', maps (state, non-terminal) to state
+    * `yyr1` - specifies the symbol number of the LHS of each rule - for next state during reduce moves
+    * `yyr2` - specifies the number of symbols on the RHS of each rule - for popping stacks during reduce moves
+    * `yytable` -  compressed representation of the actions to take in each state - negative for reductions, NINF for error detection
+    * `yypgoto` - 'present go to', maps (previous state, non-terminal) to next state
+    * `yypact` - 'present action', describes what to do in a given state. It is a directory into `yytable` indexed by state number
+    * `yycheck` - used for various checks - legal bounds within portions of `yytable`
 
   ##### The `yyparse()` function
 
