@@ -80,6 +80,9 @@
   				(yy_last_accepting_cpos) = yy_cp;
   				}
 
+        // Checks if we are supposed to take the default action in this state
+        // Repeatedly takes the default actions and updates the current state
+        // This is an optimization to reduce the size of the transition tables of the DFA
 
   			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
   				{
@@ -95,10 +98,13 @@
   			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
   			++yy_cp;
   			}
-  		while ( yy_base[yy_current_state] != 699 );
+  		while ( yy_base[yy_current_state] != 699 ); // Checks if there is no rule which can match the string further
 
   yy_find_action:
+      // Find the action to be performed and perform the action
   		yy_act = yy_accept[yy_current_state];
+
+
   		if ( yy_act == 0 )
   			{ /* have to back up */
   			yy_cp = (yy_last_accepting_cpos);
@@ -106,8 +112,11 @@
   			yy_act = yy_accept[yy_current_state];
   			}
 
+      // Before performing the action, the current state of the buffer and the information
+      // related to the lexeme are stored
   		YY_DO_BEFORE_ACTION;
 
+      // Checks for newline characters and updates the line number is location
   		if ( yy_act != YY_END_OF_BUFFER && yy_rule_can_match_eol[yy_act] )
   			{
   			yy_size_t yyl;
@@ -116,6 +125,8 @@
       yylineno++;
   ;
   			}
+
+  // Code to perform the action which was chosen in the previous step
 
   do_action:	/* This label is used only to access EOF actions. */
   		switch ( yy_act ) { // switch over actions
@@ -134,7 +145,7 @@
   case 2:
   YY_RULE_SETUP
   #line 41 "c.l"
-  { /* consume //-comment */ }
+  { /* consume //-comment */ } // Actions as specified in the lex file by the user
   	YY_BREAK
   // cases for many tokens ommitted
   // ...
@@ -145,124 +156,14 @@
   	YY_BREAK
   #line 1644 "c.lex.cpp"
   case YY_STATE_EOF(INITIAL): // End of File Reached
-  	yyterminate();
+  	yyterminate(); // returns 0
 
   	case YY_END_OF_BUFFER:
   		{
-  		/* Amount of text matched not including the EOB char. */
-  		int yy_amount_of_matched_text = (int) (yy_cp - (yytext_ptr)) - 1;
+  		   // here it checks if the buffer ended or the file ended and whether
+         // the yyin was pointed to a new input stream
 
-  		/* Undo the effects of YY_DO_BEFORE_ACTION. */
-  		*yy_cp = (yy_hold_char);
-  		YY_RESTORE_YY_MORE_OFFSET
-
-  		if ( YY_CURRENT_BUFFER_LVALUE->yy_buffer_status == YY_BUFFER_NEW )
-  			{
-  			/* We're scanning a new file or input source.  It's
-  			 * possible that this happened because the user
-  			 * just pointed yyin at a new source and called
-  			 * yylex().  If so, then we have to assure
-  			 * consistency between YY_CURRENT_BUFFER and our
-  			 * globals.  Here is the right place to do so, because
-  			 * this is the first action (other than possibly a
-  			 * back-up) that will match for the new input source.
-  			 */
-  			(yy_n_chars) = YY_CURRENT_BUFFER_LVALUE->yy_n_chars;
-  			YY_CURRENT_BUFFER_LVALUE->yy_input_file = yyin;
-  			YY_CURRENT_BUFFER_LVALUE->yy_buffer_status = YY_BUFFER_NORMAL;
-  			}
-
-  		/* Note that here we test for yy_c_buf_p "<=" to the position
-  		 * of the first EOB in the buffer, since yy_c_buf_p will
-  		 * already have been incremented past the NUL character
-  		 * (since all states make transitions on EOB to the
-  		 * end-of-buffer state).  Contrast this with the test
-  		 * in input().
-  		 */
-  		if ( (yy_c_buf_p) <= &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[(yy_n_chars)] )
-  			{ /* This was really a NUL. */
-  			yy_state_type yy_next_state;
-
-  			(yy_c_buf_p) = (yytext_ptr) + yy_amount_of_matched_text;
-
-  			yy_current_state = yy_get_previous_state(  );
-
-  			/* Okay, we're now positioned to make the NUL
-  			 * transition.  We couldn't have
-  			 * yy_get_previous_state() go ahead and do it
-  			 * for us because it doesn't know how to deal
-  			 * with the possibility of jamming (and we don't
-  			 * want to build jamming into it because then it
-  			 * will run more slowly).
-  			 */
-  			yy_next_state = yy_try_NUL_trans( yy_current_state );
-  			yy_bp = (yytext_ptr) + YY_MORE_ADJ;
-
-  			if ( yy_next_state )
-  				{
-  				/* Consume the NUL. */
-  				yy_cp = ++(yy_c_buf_p);
-  				yy_current_state = yy_next_state;
-  				goto yy_match;
-  				}
-  			else
-  				{
-  				yy_cp = (yy_c_buf_p);
-  				goto yy_find_action;
-  				}
-  			}
-
-  		else switch ( yy_get_next_buffer(  ) )
-  			{
-  			case EOB_ACT_END_OF_FILE:
-  				{
-  				(yy_did_buffer_switch_on_eof) = 0;
-
-  				if ( yywrap( ) )
-  					{
-  					/* Note: because we've taken care in
-  					 * yy_get_next_buffer() to have set up
-  					 * yytext, we can now set up
-  					 * yy_c_buf_p so that if some total
-  					 * hoser (like flex itself) wants to
-  					 * call the scanner after we return the
-  					 * YY_NULL, it'll still work - another
-  					 * YY_NULL will get returned.
-  					 */
-  					(yy_c_buf_p) = (yytext_ptr) + YY_MORE_ADJ;
-
-  					yy_act = YY_STATE_EOF(YY_START);
-  					goto do_action;
-  					}
-  				else
-  					{
-  					if ( ! (yy_did_buffer_switch_on_eof) )
-  						YY_NEW_FILE;
-  					}
-  				break;
-  				}
-
-  			case EOB_ACT_CONTINUE_SCAN:
-  				(yy_c_buf_p) =
-  					(yytext_ptr) + yy_amount_of_matched_text;
-
-  				yy_current_state = yy_get_previous_state(  );
-
-  				yy_cp = (yy_c_buf_p);
-  				yy_bp = (yytext_ptr) + YY_MORE_ADJ;
-  				goto yy_match;
-
-  			case EOB_ACT_LAST_MATCH:
-  				(yy_c_buf_p) =
-  				&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[(yy_n_chars)];
-
-  				yy_current_state = yy_get_previous_state(  );
-
-  				yy_cp = (yy_c_buf_p);
-  				yy_bp = (yytext_ptr) + YY_MORE_ADJ;
-  				goto yy_find_action;
-  			}
-  		break;
+         // If latter is the case, the lexing resumes from where it stopped last
   		}
 
   	default:
