@@ -6,250 +6,277 @@
 
 #### Flex generated Lexer
 
-* ##### Generated Tables
+* ​
 
-  - Flex can generate a full state transition table for FA - a 1D array of (symbol, next state), indexed by current state, or by default smaller, 1D arrays
-  - The transition table is compressed using double displacement - 2D table is flattened to 1D by
-    - Mapping all non-white-space entries into some location of the array, keeping the order of elements in each row intact
-    - Displacing each row by some amount such that no two non-white-space entries in each row occupy the same position
+  ##### Generated Tables
 
-```C
-YY_DECL // macro for yylex()
-{
-	yy_state_type yy_current_state;
-	char *yy_cp, *yy_bp;
-	int yy_act;
-    
-	if ( !(yy_init) )
-		{
-		(yy_init) = 1;
+  * Flex can generate a full state transition table for FA - a 1D array of (symbol, next state), indexed by current state, or by default smaller, 1D arrays
+  * The transition table is compressed using double displacement - 2D table is flattened to 1D by
+    * Mapping all non-white-space entries into some location of the array, keeping the order of elements in each row intact
+    * Displacing each row by some amount such that no two non-white-space entries in each row occupy the same position
 
-		if ( ! (yy_start) )
-			(yy_start) = 1;	/* first start state */
-		if ( ! yyin )
-			yyin = stdin;
-		if ( ! yyout )
-			yyout = stdout;
-		if ( ! YY_CURRENT_BUFFER ) {
-			yyensure_buffer_stack ();
-			YY_CURRENT_BUFFER_LVALUE =
-				yy_create_buffer(yyin,YY_BUF_SIZE );
-		}
-		yy_load_buffer_state( );
-		}
+  ```C
+  YY_DECL // macro for yylex()
+  {
+  	yy_state_type yy_current_state; //current state of the DFA
+  	char *yy_cp, *yy_bp;
+  	int yy_act; // action number to be taken in the current state
+      
+    	// checks if initialization of file pointers and buffers has not already been done
+  	if ( !(yy_init) ) 
+  		{
+  		(yy_init) = 1;
 
-	{
-#line 39 "c.l"
+  		if ( ! (yy_start) )
+  			(yy_start) = 1;	// first start state
+        
+  		// Set global input and output streams to standard input and output if not already set to files
+  		if ( ! yyin )
+  			yyin = stdin;
+  		if ( ! yyout )
+  			yyout = stdout;
 
-#line 1035 "c.lex.cpp"
+  		// This checks if a buffer is available for storing characters, if not, creates a buffer
 
-	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
-		{
-		yy_cp = (yy_c_buf_p);
-		/* Support of yytext. */
-		*yy_cp = (yy_hold_char);
-		/* yy_bp points to the position in yy_ch_buf of the start of
-		 * the current run.
-		 */
-		yy_bp = yy_cp;
+  		if ( ! YY_CURRENT_BUFFER ) {
+  			yyensure_buffer_stack ();
+  			YY_CURRENT_BUFFER_LVALUE =
+  				yy_create_buffer(yyin,YY_BUF_SIZE ); // creates a buffer to use
+  		}
 
-		yy_current_state = (yy_start);
-yy_match:
-		do
-			{
-			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)] ;
-			if ( yy_accept[yy_current_state] )
-				{
-				(yy_last_accepting_state) = yy_current_state;
-				(yy_last_accepting_cpos) = yy_cp;
-				}
-			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
-				{
-				yy_current_state = (int) yy_def[yy_current_state];
-				if ( yy_current_state >= 385 )
-					yy_c = yy_meta[(unsigned int) yy_c];
-				}
-			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
-			++yy_cp;
-			}
-		while ( yy_base[yy_current_state] != 699 );
+  		// Loads the buffer state
+  		yy_load_buffer_state( ); // loads the buffer state in the relevant global variables
+  		}
 
-yy_find_action:
-		yy_act = yy_accept[yy_current_state];
-		if ( yy_act == 0 )
-			{ /* have to back up */
-			yy_cp = (yy_last_accepting_cpos);
-			yy_current_state = (yy_last_accepting_state);
-			yy_act = yy_accept[yy_current_state];
-			}
+  	{
+  #line 39 "c.l"
 
-		YY_DO_BEFORE_ACTION;
+  #line 1035 "c.lex.cpp"
 
-		if ( yy_act != YY_END_OF_BUFFER && yy_rule_can_match_eol[yy_act] )
-			{
-			yy_size_t yyl;
-			for ( yyl = 0; yyl < yyleng; ++yyl )
-				if ( yytext[yyl] == '\n' )
-    yylineno++;
-;
-			}
+  	while ( /*CONSTCOND*/1 )		// The main lexing loop
+  		{
+  		yy_cp = (yy_c_buf_p);    // stores the location before entering in the loop, in the buffer
+  		
+  		*yy_cp = (yy_hold_char); 
+  		
+      /* yy_bp points to the position in yy_ch_buf of the start of
+  		 * the current run.
+  		 */
+  		yy_bp = yy_cp;
 
-do_action:	/* This label is used only to access EOF actions. */
-		switch ( yy_act ) { // switch over actions
-			case 0: // back-up
-			// undo the effects of YY_DO_BEFORE_ACTION
-			*yy_cp = (yy_hold_char);
-			yy_cp = (yy_last_accepting_cpos);
-			yy_current_state = (yy_last_accepting_state);
-			goto yy_find_action;
+  		yy_current_state = (yy_start); // starts the DFA at the start state
 
-case 1: 	   // to account for C-style comments
-YY_RULE_SETUP
-#line 40 "c.l" // refer to line number to flag error, in case of problem
-{ comment(); }
-	YY_BREAK
-case 2:
-YY_RULE_SETUP
-#line 41 "c.l"
-{ /* consume //-comment */ }
-	YY_BREAK
-// cases for many tokens ommitted
-// ...
-case 108: 	   // account for ECHO
-YY_RULE_SETUP
-#line 155 "c.l"
-ECHO;
-	YY_BREAK
-#line 1644 "c.lex.cpp"
-case YY_STATE_EOF(INITIAL): // End of File Reached
-	yyterminate();
+  yy_match:
+  		do
+  			{
+  			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)] ;
 
-	case YY_END_OF_BUFFER:
-		{
-		/* Amount of text matched not including the EOB char. */
-		int yy_amount_of_matched_text = (int) (yy_cp - (yytext_ptr)) - 1;
+        // Check if this state is accepting, if yes, then save the character pointer and state
+        // The lexing won't stop here as we want maximal munch
 
-		/* Undo the effects of YY_DO_BEFORE_ACTION. */
-		*yy_cp = (yy_hold_char);
-		YY_RESTORE_YY_MORE_OFFSET
+  			if ( yy_accept[yy_current_state] )
+  				{
+  				(yy_last_accepting_state) = yy_current_state;
+  				(yy_last_accepting_cpos) = yy_cp;
+  				}
 
-		if ( YY_CURRENT_BUFFER_LVALUE->yy_buffer_status == YY_BUFFER_NEW )
-			{
-			/* We're scanning a new file or input source.  It's
-			 * possible that this happened because the user
-			 * just pointed yyin at a new source and called
-			 * yylex().  If so, then we have to assure
-			 * consistency between YY_CURRENT_BUFFER and our
-			 * globals.  Here is the right place to do so, because
-			 * this is the first action (other than possibly a
-			 * back-up) that will match for the new input source.
-			 */
-			(yy_n_chars) = YY_CURRENT_BUFFER_LVALUE->yy_n_chars;
-			YY_CURRENT_BUFFER_LVALUE->yy_input_file = yyin;
-			YY_CURRENT_BUFFER_LVALUE->yy_buffer_status = YY_BUFFER_NORMAL;
-			}
 
-		/* Note that here we test for yy_c_buf_p "<=" to the position
-		 * of the first EOB in the buffer, since yy_c_buf_p will
-		 * already have been incremented past the NUL character
-		 * (since all states make transitions on EOB to the
-		 * end-of-buffer state).  Contrast this with the test
-		 * in input().
-		 */
-		if ( (yy_c_buf_p) <= &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[(yy_n_chars)] )
-			{ /* This was really a NUL. */
-			yy_state_type yy_next_state;
+  			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
+  				{
+  				yy_current_state = (int) yy_def[yy_current_state];
+  				if ( yy_current_state >= 385 )
+  					yy_c = yy_meta[(unsigned int) yy_c];
+  				}
 
-			(yy_c_buf_p) = (yytext_ptr) + yy_amount_of_matched_text;
+        // Decide the next state based on current state and the character
+        // Double displacement technique has been used to flatten 2D tables to 1D tables
+        // The character pointer is incremented
+          
+  			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
+  			++yy_cp;
+  			}
+  		while ( yy_base[yy_current_state] != 699 );
 
-			yy_current_state = yy_get_previous_state(  );
+  yy_find_action:
+  		yy_act = yy_accept[yy_current_state];
+  		if ( yy_act == 0 )
+  			{ /* have to back up */
+  			yy_cp = (yy_last_accepting_cpos);
+  			yy_current_state = (yy_last_accepting_state);
+  			yy_act = yy_accept[yy_current_state];
+  			}
 
-			/* Okay, we're now positioned to make the NUL
-			 * transition.  We couldn't have
-			 * yy_get_previous_state() go ahead and do it
-			 * for us because it doesn't know how to deal
-			 * with the possibility of jamming (and we don't
-			 * want to build jamming into it because then it
-			 * will run more slowly).
-			 */
-			yy_next_state = yy_try_NUL_trans( yy_current_state );
-			yy_bp = (yytext_ptr) + YY_MORE_ADJ;
+  		YY_DO_BEFORE_ACTION;
 
-			if ( yy_next_state )
-				{
-				/* Consume the NUL. */
-				yy_cp = ++(yy_c_buf_p);
-				yy_current_state = yy_next_state;
-				goto yy_match;
-				}
-			else
-				{
-				yy_cp = (yy_c_buf_p);
-				goto yy_find_action;
-				}
-			}
+  		if ( yy_act != YY_END_OF_BUFFER && yy_rule_can_match_eol[yy_act] )
+  			{
+  			yy_size_t yyl;
+  			for ( yyl = 0; yyl < yyleng; ++yyl )
+  				if ( yytext[yyl] == '\n' )
+      yylineno++;
+  ;
+  			}
 
-		else switch ( yy_get_next_buffer(  ) )
-			{
-			case EOB_ACT_END_OF_FILE:
-				{
-				(yy_did_buffer_switch_on_eof) = 0;
+  do_action:	/* This label is used only to access EOF actions. */
+  		switch ( yy_act ) { // switch over actions
+  			case 0: // back-up
+  			// undo the effects of YY_DO_BEFORE_ACTION
+  			*yy_cp = (yy_hold_char);
+  			yy_cp = (yy_last_accepting_cpos);
+  			yy_current_state = (yy_last_accepting_state);
+  			goto yy_find_action;
 
-				if ( yywrap( ) )
-					{
-					/* Note: because we've taken care in
-					 * yy_get_next_buffer() to have set up
-					 * yytext, we can now set up
-					 * yy_c_buf_p so that if some total
-					 * hoser (like flex itself) wants to
-					 * call the scanner after we return the
-					 * YY_NULL, it'll still work - another
-					 * YY_NULL will get returned.
-					 */
-					(yy_c_buf_p) = (yytext_ptr) + YY_MORE_ADJ;
+  case 1: 	   // to account for C-style comments
+  YY_RULE_SETUP
+  #line 40 "c.l" // refer to line number to flag error, in case of problem
+  { comment(); }
+  	YY_BREAK
+  case 2:
+  YY_RULE_SETUP
+  #line 41 "c.l"
+  { /* consume //-comment */ }
+  	YY_BREAK
+  // cases for many tokens ommitted
+  // ...
+  case 108: 	   // account for ECHO
+  YY_RULE_SETUP
+  #line 155 "c.l"
+  ECHO;
+  	YY_BREAK
+  #line 1644 "c.lex.cpp"
+  case YY_STATE_EOF(INITIAL): // End of File Reached
+  	yyterminate();
 
-					yy_act = YY_STATE_EOF(YY_START);
-					goto do_action;
-					}
-				else
-					{
-					if ( ! (yy_did_buffer_switch_on_eof) )
-						YY_NEW_FILE;
-					}
-				break;
-				}
+  	case YY_END_OF_BUFFER:
+  		{
+  		/* Amount of text matched not including the EOB char. */
+  		int yy_amount_of_matched_text = (int) (yy_cp - (yytext_ptr)) - 1;
 
-			case EOB_ACT_CONTINUE_SCAN:
-				(yy_c_buf_p) =
-					(yytext_ptr) + yy_amount_of_matched_text;
+  		/* Undo the effects of YY_DO_BEFORE_ACTION. */
+  		*yy_cp = (yy_hold_char);
+  		YY_RESTORE_YY_MORE_OFFSET
 
-				yy_current_state = yy_get_previous_state(  );
+  		if ( YY_CURRENT_BUFFER_LVALUE->yy_buffer_status == YY_BUFFER_NEW )
+  			{
+  			/* We're scanning a new file or input source.  It's
+  			 * possible that this happened because the user
+  			 * just pointed yyin at a new source and called
+  			 * yylex().  If so, then we have to assure
+  			 * consistency between YY_CURRENT_BUFFER and our
+  			 * globals.  Here is the right place to do so, because
+  			 * this is the first action (other than possibly a
+  			 * back-up) that will match for the new input source.
+  			 */
+  			(yy_n_chars) = YY_CURRENT_BUFFER_LVALUE->yy_n_chars;
+  			YY_CURRENT_BUFFER_LVALUE->yy_input_file = yyin;
+  			YY_CURRENT_BUFFER_LVALUE->yy_buffer_status = YY_BUFFER_NORMAL;
+  			}
 
-				yy_cp = (yy_c_buf_p);
-				yy_bp = (yytext_ptr) + YY_MORE_ADJ;
-				goto yy_match;
+  		/* Note that here we test for yy_c_buf_p "<=" to the position
+  		 * of the first EOB in the buffer, since yy_c_buf_p will
+  		 * already have been incremented past the NUL character
+  		 * (since all states make transitions on EOB to the
+  		 * end-of-buffer state).  Contrast this with the test
+  		 * in input().
+  		 */
+  		if ( (yy_c_buf_p) <= &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[(yy_n_chars)] )
+  			{ /* This was really a NUL. */
+  			yy_state_type yy_next_state;
 
-			case EOB_ACT_LAST_MATCH:
-				(yy_c_buf_p) =
-				&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[(yy_n_chars)];
+  			(yy_c_buf_p) = (yytext_ptr) + yy_amount_of_matched_text;
 
-				yy_current_state = yy_get_previous_state(  );
+  			yy_current_state = yy_get_previous_state(  );
 
-				yy_cp = (yy_c_buf_p);
-				yy_bp = (yytext_ptr) + YY_MORE_ADJ;
-				goto yy_find_action;
-			}
-		break;
-		}
+  			/* Okay, we're now positioned to make the NUL
+  			 * transition.  We couldn't have
+  			 * yy_get_previous_state() go ahead and do it
+  			 * for us because it doesn't know how to deal
+  			 * with the possibility of jamming (and we don't
+  			 * want to build jamming into it because then it
+  			 * will run more slowly).
+  			 */
+  			yy_next_state = yy_try_NUL_trans( yy_current_state );
+  			yy_bp = (yytext_ptr) + YY_MORE_ADJ;
 
-	default:
-		YY_FATAL_ERROR(
-			"fatal flex scanner internal error--no action found" );
-	} /* end of action switch */
-		} /* end of scanning one token */
-	} /* end of user's declarations */
-}
-```
+  			if ( yy_next_state )
+  				{
+  				/* Consume the NUL. */
+  				yy_cp = ++(yy_c_buf_p);
+  				yy_current_state = yy_next_state;
+  				goto yy_match;
+  				}
+  			else
+  				{
+  				yy_cp = (yy_c_buf_p);
+  				goto yy_find_action;
+  				}
+  			}
+
+  		else switch ( yy_get_next_buffer(  ) )
+  			{
+  			case EOB_ACT_END_OF_FILE:
+  				{
+  				(yy_did_buffer_switch_on_eof) = 0;
+
+  				if ( yywrap( ) )
+  					{
+  					/* Note: because we've taken care in
+  					 * yy_get_next_buffer() to have set up
+  					 * yytext, we can now set up
+  					 * yy_c_buf_p so that if some total
+  					 * hoser (like flex itself) wants to
+  					 * call the scanner after we return the
+  					 * YY_NULL, it'll still work - another
+  					 * YY_NULL will get returned.
+  					 */
+  					(yy_c_buf_p) = (yytext_ptr) + YY_MORE_ADJ;
+
+  					yy_act = YY_STATE_EOF(YY_START);
+  					goto do_action;
+  					}
+  				else
+  					{
+  					if ( ! (yy_did_buffer_switch_on_eof) )
+  						YY_NEW_FILE;
+  					}
+  				break;
+  				}
+
+  			case EOB_ACT_CONTINUE_SCAN:
+  				(yy_c_buf_p) =
+  					(yytext_ptr) + yy_amount_of_matched_text;
+
+  				yy_current_state = yy_get_previous_state(  );
+
+  				yy_cp = (yy_c_buf_p);
+  				yy_bp = (yytext_ptr) + YY_MORE_ADJ;
+  				goto yy_match;
+
+  			case EOB_ACT_LAST_MATCH:
+  				(yy_c_buf_p) =
+  				&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[(yy_n_chars)];
+
+  				yy_current_state = yy_get_previous_state(  );
+
+  				yy_cp = (yy_c_buf_p);
+  				yy_bp = (yytext_ptr) + YY_MORE_ADJ;
+  				goto yy_find_action;
+  			}
+  		break;
+  		}
+
+  	default:
+  		YY_FATAL_ERROR(
+  			"fatal flex scanner internal error--no action found" );
+  	} /* end of action switch */
+  		} /* end of scanning one token */
+  	} /* end of user's declarations */
+  }
+  ```
+
+  ​
+
+
 
 ***
 
