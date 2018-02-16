@@ -7,10 +7,24 @@
 #### Flex generated Lexer
 
 * Generates a Deterministic Finite Automata to take in a stream of input and generate a stream of tokens
+
 * Main method is `yylex()`, aliased as `YY_DECL`
+
 * It is usually run as co-routine to the parsing routine - returns a value and switches out, and resumes lexing on each call to `yylex()`
+
 * Using the flag `-CF` makes the lexer generate uncompressed transition tables, which makes the lexer algorithm easier to study
+
 * By default, the lexer uses various optimisations such as DFA minimisation, double displacement, etc. to reduce the size of the tables
+
+  ##### Important Global Variables
+
+  * `yytext` - global character pointer
+  * `yyleng` - length of `yytext`
+  * `yylval` - value associated with `yytext`
+  * `yyin` - global input file pointer (default stdin)
+  * `yylineno` - value of current line of input
+  * `yyout` - global output file pointer (default stdout)
+
   ##### Generated Tables
 
   * Flex can generate a full state transition table for FA - a 1D array of (symbol, next state), indexed by current state, or by default smaller, 1D arrays
