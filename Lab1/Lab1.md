@@ -6,7 +6,24 @@
 
 #### Flex generated Lexer
 
-* ​
+* Generates a Deterministic Finite Automata to take in a stream of input and generate a stream of tokens
+
+* Main method is `yylex()`, aliased as `YY_DECL`
+
+* It is usually run as co-routine to the parsing routine - returns a value and switches out, and resumes lexing on each call to `yylex()`
+
+* Using the flag `-CF` makes the lexer generate uncompressed transition tables, which makes the lexer algorithm easier to study
+
+* By default, the lexer uses various optimisations such as DFA minimisation, double displacement, etc. to reduce the size of the tables
+
+  ##### Important Global Variables
+
+  * `yytext` - global character pointer
+  * `yyleng` - length of `yytext`
+  * `yylval` - value associated with `yytext`
+  * `yyin` - global input file pointer (default stdin)
+  * `yylineno` - value of current line of input
+  * `yyout` - global output file pointer (default stdout)
 
   ##### Generated Tables
 
@@ -37,7 +54,6 @@
   			yyout = stdout;
 
   		// This checks if a buffer is available for storing characters, if not, creates a buffer
-
   		if ( ! YY_CURRENT_BUFFER ) {
   			yyensure_buffer_stack ();
   			YY_CURRENT_BUFFER_LVALUE =
@@ -50,27 +66,22 @@
 
   	{
   #line 39 "c.l"
-
   #line 1035 "c.lex.cpp"
 
   	while ( /*CONSTCOND*/1 )		// The main lexing loop
-  		{
-  		yy_cp = (yy_c_buf_p);    // stores the location before entering in the loop, in the buffer
-  		
+  		{ // stores the location before entering in the loop, in the buffer
+  		yy_cp = (yy_c_buf_p);    
   		*yy_cp = (yy_hold_char); 
   		
-      /* yy_bp points to the position in yy_ch_buf of the start of
-  		 * the current run.
-  		 */
+      	// yy_bp points to the position in yy_ch_buf of the start of the current run
   		yy_bp = yy_cp;
-
   		yy_current_state = (yy_start); // starts the DFA at the start state
 
   yy_match:
   		do
   			{
   			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)] ;
-
+            
         // Check if this state is accepting, if yes, then save the character pointer and state
         // The lexing won't stop here as we want maximal munch
 
@@ -94,7 +105,7 @@
         // Decide the next state based on current state and the character
         // Double displacement technique has been used to flatten 2D tables to 1D tables
         // The character pointer is incremented
-          
+
   			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
   			++yy_cp;
   			}
@@ -103,7 +114,6 @@
   yy_find_action:
       // Find the action to be performed and perform the action
   		yy_act = yy_accept[yy_current_state];
-
 
   		if ( yy_act == 0 )
   			{ /* have to back up */
@@ -175,10 +185,6 @@
   }
   ```
 
-  ​
-
-
-
 ***
 
 
@@ -186,9 +192,8 @@
 #### Bison generated Parser
 
 * The generated parser is supposed to be LALR(1)
-
-* ....
-
+* Bison generates two files - 'c.tab.cpp' and 'c.tab.hpp' of which the header file defines all the token symbols and their mappings to integers, which is also used by the lexer for determining the output format
+* To study the algorithm of construction of parse tables the flag `--report = all`. This generates a report in 'c.output' which contains the ordering of the extended grammar rules and the LALR parsing tables used
   ##### Generated Tables
 
   * Bison does not generate a LR parse table(state transition table for FA), but instead creates smaller, 1D arrays
@@ -213,6 +218,8 @@
     * `yypgoto` - 'present go to', maps (previous state, non-terminal) to next state
     * `yypact` - 'present action', describes what to do in a given state. It is a directory into `yytable` indexed by state number
     * `yycheck` - used for various checks - legal bounds within portions of `yytable`
+
+    ​
 
   ##### The `yyparse()` function
 
@@ -425,6 +432,14 @@
   }
   ```
 
-  ​
+- - The parser also checks the stack for overflows, relocating the stacks when necessary
+  - Does lots of error checking. The parser has to get back to a sane state where the error token can be shifted next and print appropriate verbose output and be able to call yyerror()
+  - There is also cleanup code for symbols that are popped off the semantic stack to avoid memory leaks
 
-  ​
+------
+
+### Sources consulted
+
+1. [Flex Manual](http://web.mit.edu/gnu/doc/html/flex_1.html)
+2. [Bison Manual](https://www.gnu.org/software/bison/manual/bison.html)
+
