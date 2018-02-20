@@ -1,6 +1,7 @@
 %{
 #include <cstdio>
 #include <iostream>
+#include "treeNode.hpp"
 using namespace std;
 
 // stuff from flex that bison needs to know about:
@@ -9,7 +10,12 @@ int yyparse();
 extern "C" FILE *yyin;
  
 void yyerror(const char *s);
+
+treeNode ASTREE;
 %}
+
+%define api.value.type {struct treeNode}
+
 %token	IDENTIFIER I_CONSTANT F_CONSTANT STRING_LITERAL FUNC_NAME SIZEOF
 %token	PTR_OP INC_OP DEC_OP LEFT_OP RIGHT_OP LE_OP GE_OP EQ_OP NE_OP
 %token	AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
@@ -517,7 +523,7 @@ jump_statement
 	;
 
 translation_unit
-	: external_declaration
+	: external_declaration {treeNode temp; temp.name = 10; temp.children = NULL; $$ = temp; ASTREE = $$;}
 	| translation_unit external_declaration
 	;
 
