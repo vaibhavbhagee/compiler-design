@@ -7,7 +7,7 @@
 extern "C" int yylex();
 int yyparse();
 extern "C" FILE *yyin;
-extern "C" treeNode ASTREE;
+extern "C" treeNode ASTree;
 
 static void usage()
 {
@@ -26,7 +26,7 @@ main(int argc, char **argv)
   assert(yyin);
   int ret = yyparse();
 
-  printf("%d\n", ASTREE.name);
+  printf("%d\n", ASTree.name);
   printf("retv = %d\n", ret);
   exit(0);
 }

@@ -11,7 +11,7 @@ extern "C" FILE *yyin;
  
 void yyerror(const char *s);
 
-treeNode ASTREE;
+treeNode ASTree;
 %}
 
 %define api.value.type {struct treeNode}
@@ -523,7 +523,7 @@ jump_statement
 	;
 
 translation_unit
-	: external_declaration {treeNode temp; temp.name = 10; temp.children = NULL; $$ = temp; ASTREE = $$;}
+	: external_declaration {treeNode temp = treeNode(10, 10); $$ = temp; ASTree = $$;}
 	| translation_unit external_declaration
 	;
 

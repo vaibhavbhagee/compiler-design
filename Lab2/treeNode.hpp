@@ -2,9 +2,26 @@
 #define TREENODE_H
 #include <string>
 
-struct treeNode {
-	int name;
-	treeNode* children;
+class treeNode {
+	public:
+		int name;
+		int value;
+		treeNode* children;
+
+		treeNode() {
+			name = 0;
+			value = 0;
+			children = NULL;
+		}
+
+		treeNode(int n) {
+			name = n;
+		}
+
+		treeNode(int n, int v) {
+			name = n;
+			value = v;
+		}
 };
 
 #endif
