@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include "treeNode.hpp"
 #include "c.tab.hpp"
 
 extern "C" int yylex();
 int yyparse();
 extern "C" FILE *yyin;
+extern "C" treeNode ASTREE;
 
 static void usage()
 {
@@ -23,6 +25,8 @@ main(int argc, char **argv)
   yyin = fopen(filename, "r");
   assert(yyin);
   int ret = yyparse();
+
+  printf("%d\n", ASTREE.name);
   printf("retv = %d\n", ret);
   exit(0);
 }
