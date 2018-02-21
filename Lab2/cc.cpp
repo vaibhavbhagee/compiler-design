@@ -17,27 +17,23 @@ static void usage()
 }
 
 
+char depth[2056];
+int di;
+void printTree(treeNode tree) {
 
-void printTree(treeNode* tree) {
-  if (tree == NULL) {
-    return;
-  }
-  std::cout << tree->name << std::endl;
+  std::cout << tree.name << std::endl;
 
-  char depth[2056];
-  int di;
-
-  for (auto child:tree->children) {
+  for (int i = 0; i < tree.children.size(); i++) {
     std::cout << depth << "  --";
 
     // push
     depth[di++] = ' ';
-    depth[di++] = '|';
+    depth[di++] = (i < tree.children.size() - 1)?'|':' ';
     depth[di++] = ' ';
     depth[di++] = ' ';
     depth[di] = 0;
 
-    printTree(child);
+    printTree(tree.children[i]);
 
     //pop
     depth[di -= 4] = 0;
@@ -56,8 +52,8 @@ main(int argc, char **argv)
   assert(yyin);
   int ret_val = yyparse();
 
-  // std::cout << ASTree.name << std::endl;
-  printTree(&ASTree);
+  printTree(ASTree);
+  // std::cout << ASTree.children[0].children[0].children[0].name <<std::endl;
   std::cout << "retv = " << ret_val << std::endl;
   exit(0);
 }

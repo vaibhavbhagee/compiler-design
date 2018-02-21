@@ -8,7 +8,7 @@ class treeNode {
 	public:
 		std::string name;
 		int value;
-		std::vector<treeNode*> children;
+		std::vector<treeNode> children;
 
 		treeNode() {
 			name = "";

@@ -523,12 +523,12 @@ jump_statement
 	;
 
 start_state
-	: translation_unit {ASTree.children.push_back(&$1);}
+	: translation_unit {ASTree.children.push_back($1);}
 	;
 
 translation_unit
-	: external_declaration {treeNode temp = treeNode("tu"); temp.children.push_back(&$1); $$ = temp;}
-	| translation_unit external_declaration {treeNode temp = treeNode("tu"); temp.children.push_back(&$1); temp.children.push_back(&$2); $$ = temp;}
+	: external_declaration {treeNode temp = treeNode("tu"); temp.children.push_back($1); $$ = temp;}
+	| translation_unit external_declaration {treeNode temp = treeNode("tu"); temp.children.push_back($1); temp.children.push_back($2); $$ = temp;}
 	;
 
 external_declaration
