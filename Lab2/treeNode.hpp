@@ -1,24 +1,25 @@
 #ifndef TREENODE_H
 #define TREENODE_H
+
 #include <string>
+#include <vector>
 
 class treeNode {
 	public:
-		int name;
+		std::string name;
 		int value;
-		treeNode* children;
+		std::vector<treeNode*> children;
 
 		treeNode() {
-			name = 0;
+			name = "";
 			value = 0;
-			children = NULL;
 		}
 
-		treeNode(int n) {
+		treeNode(std::string n) {
 			name = n;
 		}
 
-		treeNode(int n, int v) {
+		treeNode(std::string n, int v) {
 			name = n;
 			value = v;
 		}

@@ -11,7 +11,7 @@ extern "C" FILE *yyin;
  
 void yyerror(const char *s);
 
-treeNode ASTree;
+treeNode ASTree("ROOT", 0);
 %}
 
 %define api.value.type {struct treeNode}
@@ -33,7 +33,7 @@ treeNode ASTree;
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-%start translation_unit
+%start start_state
 %%
 
 primary_expression
@@ -522,14 +522,18 @@ jump_statement
 	| RETURN expression ';'
 	;
 
+start_state
+	: translation_unit {ASTree.children.push_back(&$1);}
+	;
+
 translation_unit
-	: external_declaration {treeNode temp = treeNode(10, 10); $$ = temp; ASTree = $$;}
-	| translation_unit external_declaration
+	: external_declaration {treeNode temp = treeNode("tu"); temp.children.push_back(&$1); $$ = temp;}
+	| translation_unit external_declaration {treeNode temp = treeNode("tu"); temp.children.push_back(&$1); temp.children.push_back(&$2); $$ = temp;}
 	;
 
 external_declaration
-	: function_definition
-	| declaration
+	: function_definition {treeNode temp = treeNode("ext"); $$ = temp;}
+	| declaration {treeNode temp = treeNode("ext"); $$ = temp;}
 	;
 
 function_definition
