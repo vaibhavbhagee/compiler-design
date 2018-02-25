@@ -1,8 +1,8 @@
-int printf(char const *format, ...);
+int printf(void);
 
 int
-main(int argc, char **argv)
+main(void)
 {
-  printf("hello, world\n");
+  printf();
   return 0;
 }
