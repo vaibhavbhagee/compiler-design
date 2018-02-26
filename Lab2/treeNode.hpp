@@ -7,7 +7,7 @@
 class treeNode {
 	public:
 		std::string type;
-		std::vector<treeNode> children;
+		std::vector<treeNode*> children;
 
 		treeNode() {
 			type = "";
@@ -15,6 +15,16 @@ class treeNode {
 
 		treeNode(std::string n) {
 			type = n;
+		}
+
+		treeNode(treeNode &t) {
+			type = t.type;
+			children = t.children;
+		}
+
+		treeNode(treeNode *t) {
+			type = t->type;
+			children = t->children;
 		}
 };
 
