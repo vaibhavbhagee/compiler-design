@@ -88,17 +88,17 @@ static int check_type(void);
 
 {L}{A}*					{ return check_type(); }
 
-{HP}{H}+{IS}?				{ return I_CONSTANT; }
-{NZ}{D}*{IS}?				{ return I_CONSTANT; }
-"0"{O}*{IS}?				{ return I_CONSTANT; }
-{CP}?"'"([^'\\\n]|{ES})+"'"		{ return I_CONSTANT; }
+{HP}{H}+{IS}?				{ yylval.ival = atoi(yytext); return I_CONSTANT; }
+{NZ}{D}*{IS}?				{ yylval.ival = atoi(yytext); return I_CONSTANT; }
+"0"{O}*{IS}?				{ yylval.ival = atoi(yytext); return I_CONSTANT; }
+{CP}?"'"([^'\\\n]|{ES})+"'"		{  yylval.ival = atoi(yytext); return I_CONSTANT; }
 
-{D}+{E}{FS}?				{ return F_CONSTANT; }
-{D}*"."{D}+{E}?{FS}?			{ return F_CONSTANT; }
-{D}+"."{E}?{FS}?			{ return F_CONSTANT; }
-{HP}{H}+{P}{FS}?			{ return F_CONSTANT; }
-{HP}{H}*"."{H}+{P}{FS}?			{ return F_CONSTANT; }
-{HP}{H}+"."{P}{FS}?			{ return F_CONSTANT; }
+{D}+{E}{FS}?				{  yylval.fval = atoi(yytext); return F_CONSTANT; }
+{D}*"."{D}+{E}?{FS}?			{ yylval.fval = atoi(yytext); return F_CONSTANT; }
+{D}+"."{E}?{FS}?			{ yylval.fval = atoi(yytext); return F_CONSTANT; }
+{HP}{H}+{P}{FS}?			{ yylval.fval = atoi(yytext); return F_CONSTANT; }
+{HP}{H}*"."{H}+{P}{FS}?			{ yylval.fval = atoi(yytext); return F_CONSTANT; }
+{HP}{H}+"."{P}{FS}?			{ yylval.fval = atoi(yytext); return F_CONSTANT; }
 
 ({SP}?\"([^"\\\n]|{ES})*\"{WS}*)+	{ return STRING_LITERAL; }
 
@@ -186,7 +186,12 @@ static int check_type(void)
         return TYPEDEF_NAME;
     case ENUMERATION_CONSTANT:        /* previously defined */
         return ENUMERATION_CONSTANT;
-    default:                          /* includes undefined */
+    default:                         /* includes undefined */
+    // allocate sval and copy yytext to it
+    yylval.sval = new char[yyleng];
+    for (int i = 0; i < yyleng; i++) {
+        yylval.sval[i] = yytext[i];
+    }
         return IDENTIFIER;
     }
 }

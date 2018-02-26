@@ -134,15 +134,9 @@ direct_declarator
 													$$ = arr;
 												}
 	| IDENTIFIER '(' parameter_type_list ')'	{
-													if ($1) {
-														IdentNode *temp = new IdentNode($1);
-		 												temp->children.push_back($3);
-		 												$$ = temp; 
-													}
-		 											else {
-		 												char* temp = $1;
-		 												$$ = $3;
-		 											}
+													IdentNode *temp = new IdentNode($1);
+	 												temp->children.push_back($3);
+	 												$$ = temp; 
 		 										}
 	;
 
@@ -199,8 +193,8 @@ expression_statement
 	;
 
 selection_statement
-	: IF '(' expression ')' statement ELSE statement  {treeNode *temp = new treeNode("ITE"); temp->children.push_back($3);  temp->children.push_back($5);  temp->children.push_back($7); $$ = temp;}
-	| IF '(' expression ')' statement 				  {treeNode *temp = new treeNode("IF"); temp->children.push_back($3);  temp->children.push_back($5); $$ = temp;}
+	: IF '(' expression ')' statement ELSE statement  								{treeNode *temp = new treeNode("ITE"); temp->children.push_back($3);  temp->children.push_back($5);  temp->children.push_back($7); $$ = temp;}
+	| IF '(' expression ')' statement 				  								{treeNode *temp = new treeNode("IF"); temp->children.push_back($3);  temp->children.push_back($5); $$ = temp;}
 	;
 
 iteration_statement
@@ -210,21 +204,21 @@ iteration_statement
 	;
 
 jump_statement
-	: RETURN ';'								{treeNode *temp = new treeNode("RETURN"); $$ = temp;}
-	| RETURN expression ';'						{treeNode *temp = new treeNode("RETURN"); temp->children.push_back($2); $$ = temp;}
+	: RETURN ';'														{treeNode *temp = new treeNode("RETURN"); $$ = temp;}
+	| RETURN expression ';'												{treeNode *temp = new treeNode("RETURN"); temp->children.push_back($2); $$ = temp;}
 	;
 
 expression
-	: assignment_expression 					{$$ = $1;}
+	: assignment_expression 											{$$ = $1;}
 	;
 
 assignment_expression
 	: conditional_expression											{$$ = $1;}
-	| unary_expression assignment_operator assignment_expression		{treeNode *temp = new treeNode("assignment"); temp->children.push_back($1); temp->children.push_back($2); temp->children.push_back($3); $$ = temp;}
+	| unary_expression assignment_operator assignment_expression		{treeNode *temp = new treeNode("ASSIGN"); temp->children.push_back($1); temp->children.push_back($3); $$ = temp;}
 	;
 
 assignment_operator	
-	: '='																{treeNode *temp = new treeNode("ASSIGN"); $$ = temp;}
+	: '='																{treeNode *temp = new treeNode("="); $$ = temp;}
 	;
 
 conditional_expression
@@ -296,22 +290,15 @@ unary_operator
 
 postfix_expression
 	: primary_expression									{$$ = $1;}
-	| postfix_expression '[' expression ']'					{treeNode *temp = new treeNode("[ ]"); temp->children.push_back($1); temp->children.push_back($3); $$ = temp;}
-	| postfix_expression '(' ')'							{treeNode *temp = new treeNode("()"); temp->children.push_back($1); $$ = temp;}
-	| postfix_expression '(' argument_expression_list ')'	{treeNode *temp = new treeNode("( )"); temp->children.push_back($1); temp->children.push_back($3); $$ = temp;}
-	| postfix_expression INC_OP								{treeNode *temp = new treeNode("INC"); temp->children.push_back($1); $$ = temp;}
-	| postfix_expression DEC_OP								{treeNode *temp = new treeNode("DEC"); temp->children.push_back($1); $$ = temp;}
+	| postfix_expression '[' expression ']'					{treeNode *temp = new treeNode("[ ]"); temp->children.push_back($3); $1->children.push_back(temp); $$ = $1;}
+	| postfix_expression '(' ')'							{$$ = $1;}
+	| postfix_expression '(' argument_expression_list ')'	{treeNode *temp = new treeNode("( )"); temp->children.push_back($3); $1->children.push_back(temp); $$ = $1;}
+	| postfix_expression INC_OP								{treeNode *temp = new treeNode("INC"); $1->children.push_back(temp); $$ = temp;}
+	| postfix_expression DEC_OP								{treeNode *temp = new treeNode("DEC"); $1->children.push_back(temp); $$ = temp;}
 	;
 
 primary_expression
-	: IDENTIFIER											{
-																if ($1) {
-					 												$$ = new IdentNode($1);
-																}
-					 											else {
-					 												$$ = new IdentNode("NO ARGS");
-					 											}
-															} /* TODO: Convert treeNode here back to IdentNode*/
+	: IDENTIFIER											{$$ = new IdentNode($1);}
 	| constant 												{$$ = $1;}
 	| '(' expression ')'									{$$ = $2;}
 	;

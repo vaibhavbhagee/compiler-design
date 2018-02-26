@@ -1,9 +1,11 @@
 int printf(void);
+int a[4];
 
 int
 main(void)
 {
-  printf();
+  int a;
+  printf(a, b);
   printf();
   return 0;
 }
