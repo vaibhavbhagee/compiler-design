@@ -1,4 +1,5 @@
 %code requires {
+	#include <iostream>
 	#include "treeNode.hpp"
 }
 
@@ -27,17 +28,17 @@ treeNode *ASTree = NULL;
 %union {
 	int ival;
 	float fval;
-	std::string* sval;
+	char* sval;
 	treeNode* node;
 	ConstNode* cnode;
 	IdentNode* inode;
 }
 
 // semantic values of terminals
-%token  <sval> STRING_LITERAL FUNC_NAME
 %token	<sval> IDENTIFIER 
 %token  <ival> I_CONSTANT 
 %token  <fval> F_CONSTANT 
+%token  STRING_LITERAL FUNC_NAME
 %token 	SIZEOF
 %token	PTR_OP LEFT_OP RIGHT_OP 
 %token  INC_OP DEC_OP LE_OP GE_OP EQ_OP NE_OP
@@ -78,13 +79,13 @@ start_state
 	;
 
 translation_unit
-	: external_declaration 						{treeNode *temp = new treeNode("tu"); temp->children.push_back($1); $$ = temp;}
+	: external_declaration 						{$$ = $1;}
 	| translation_unit external_declaration 	{treeNode *temp = new treeNode("tu"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
 	;
 
 external_declaration
-	: function_definition 						{treeNode *temp = new treeNode("ext"); temp->children.push_back($1); $$ = temp;}
-	| declaration 								{treeNode *temp = new treeNode("ext"); temp->children.push_back($1); $$ = temp;}
+	: function_definition 						{$$ = $1;}
+	| declaration 								{$$ = $1;}
 	;
 
 declaration
@@ -93,92 +94,108 @@ declaration
 
 declaration_specifiers
 	: storage_class_specifier type_specifier 	{treeNode *temp = new treeNode("decl_spec"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
-	| type_specifier						 	{treeNode *temp = new treeNode("decl_spec"); temp->children.push_back($1); $$ = temp;}
+	| type_specifier						 	{$$ = $1;}
 	;
 
 storage_class_specifier
-	: EXTERN 									{treeNode *temp = new treeNode("s_c_s"); $$ = temp;}
-	| STATIC 									{treeNode *temp = new treeNode("s_c_s"); $$ = temp;}
-	| REGISTER  								{treeNode *temp = new treeNode("s_c_s"); $$ = temp;}
+	: EXTERN 									{treeNode *temp = new treeNode("EXTERN"); $$ = temp;}
+	| STATIC 									{treeNode *temp = new treeNode("STATIC"); $$ = temp;}
+	| REGISTER  								{treeNode *temp = new treeNode("REGISTER"); $$ = temp;}
 	;
 
 type_specifier
-	: VOID 										{treeNode *temp = new treeNode("type_spec"); $$ = temp;}
-	| CHAR 										{treeNode *temp = new treeNode("type_spec"); $$ = temp;}
-	| INT 										{treeNode *temp = new treeNode("type_spec"); $$ = temp;}
-	| FLOAT 									{treeNode *temp = new treeNode("type_spec"); $$ = temp;}
+	: VOID 										{treeNode *temp = new treeNode("VOID"); $$ = temp;}
+	| CHAR 										{treeNode *temp = new treeNode("CHAR"); $$ = temp;}
+	| INT 										{treeNode *temp = new treeNode("INT"); $$ = temp;}
+	| FLOAT 									{treeNode *temp = new treeNode("FLOAT"); $$ = temp;}
 	;
 
 init_declarator_list
-	: init_declarator 							{treeNode *temp = new treeNode("init_decl_list"); temp->children.push_back($1); $$ = temp;}
+	: init_declarator 							{$$ = $1;}
 	| init_declarator_list ',' init_declarator  {treeNode *temp = new treeNode("init_decl_list"); temp->children.push_back($1); temp->children.push_back($3); $$ = temp;}
 	;
 
 init_declarator
-	: declarator 								{treeNode *temp = new treeNode("init_decl"); temp->children.push_back($1); $$ = temp;}
+	: declarator 								{$$ = $1;}
 	;
 
 declarator
 	: pointer direct_declarator 				{treeNode *temp = new treeNode("declr"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
-	| direct_declarator							{treeNode *temp = new treeNode("declr"); temp->children.push_back($1); $$ = temp;}
+	| direct_declarator							{$$ = $1;}
 	;
 
 direct_declarator
-	: IDENTIFIER								{treeNode *temp = new treeNode("direct_decl"); $$ = temp;}
-	| IDENTIFIER '[' I_CONSTANT ']'				{treeNode *temp = new treeNode("direct_decl"); $$ = temp;}
-	| IDENTIFIER '(' parameter_type_list ')'	{treeNode *temp = new treeNode("direct_decl"); $$ = temp;}
+	: IDENTIFIER								{IdentNode *temp = new IdentNode($1); $$ = temp;}
+	| IDENTIFIER '[' I_CONSTANT ']'				{
+													IdentNode *temp = new IdentNode($1);
+													ConstNode *temp2 = new ConstNode($3);
+													treeNode *arr = new treeNode("ARRAY");
+													arr->children.push_back(temp); arr->children.push_back(temp2);
+													$$ = arr;
+												}
+	| IDENTIFIER '(' parameter_type_list ')'	{
+													if ($1) {
+														IdentNode *temp = new IdentNode($1);
+		 												temp->children.push_back($3);
+		 												$$ = temp; 
+													}
+		 											else {
+		 												char* temp = $1;
+		 												$$ = $3;
+		 											}
+		 										}
 	;
 
 pointer
-	: '*' pointer /* Check multiple pointers*/  {treeNode *temp = new treeNode("pointer"); $$ = temp;}
-	| '*'										{treeNode *temp = new treeNode("pointer"); $$ = temp;}
+	: '*' pointer /* Check multiple pointers*/  {treeNode *temp = new treeNode("*"); $$ = temp;}
+	| '*'										{treeNode *temp = new treeNode("*"); $$ = temp;}
 	;
 
 function_definition
-	: declaration_specifiers declarator compound_statement 		{treeNode *temp = new treeNode("func_def"); temp->children.push_back($1); temp->children.push_back($2); temp->children.push_back($3); $$ = temp;}
+	: declaration_specifiers declarator compound_statement 		{treeNode *temp = new treeNode("FUNC"); temp->children.push_back($1); temp->children.push_back($2); temp->children.push_back($3); $$ = temp;}
 	;
 
 parameter_type_list
-	: parameter_list 							{treeNode *temp = new treeNode("p_list_type"); temp->children.push_back($1); $$ = temp;}
+	: parameter_list 							{$$ = $1;}
 	| VOID 										{treeNode *temp = new treeNode("VOID"); $$ = temp;}
 	;
 
 parameter_list
-	: parameter_declaration  					{treeNode *temp = new treeNode("p_list"); temp->children.push_back($1); $$ = temp;}
-	| parameter_list ',' parameter_declaration  {treeNode *temp = new treeNode("p_list"); temp->children.push_back($1); temp->children.push_back($3); $$ = temp;}
+	: parameter_declaration  					{$$ = $1;}
+	| parameter_list ',' parameter_declaration  {treeNode *temp = new treeNode("params"); temp->children.push_back($1); temp->children.push_back($3); $$ = temp;}
 	;
 
 parameter_declaration
-	: type_specifier IDENTIFIER					{treeNode *temp = new treeNode("p_decl"); temp->children.push_back($1); $$ = temp;}
-	| type_specifier pointer IDENTIFIER 		{treeNode *temp = new treeNode("p_decl"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
+	: type_specifier IDENTIFIER					{treeNode *temp = new treeNode("param_decl"); temp->children.push_back($1); $$ = temp;}
+	| type_specifier pointer IDENTIFIER 		{treeNode *temp = new treeNode("param_decl"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
 	;
 
 compound_statement
-	: '{' '}'									{treeNode *temp = new treeNode("c_stat"); $$ = temp;}
-	| '{'  block_item_list '}'					{treeNode *temp = new treeNode("c_stat"); temp->children.push_back($2); $$ = temp;}
+	: '{' '}'									{treeNode *temp = new treeNode("{}"); $$ = temp;}
+	| '{'  block_item_list '}'					{treeNode *temp = new treeNode("BLOCK"); temp->children.push_back($2); $$ = temp;}
 	;
 
 block_item_list
-	: block_item 								{treeNode *temp = new treeNode("b_i_l"); temp->children.push_back($1); $$ = temp;}
-	| block_item_list block_item 				{treeNode *temp = new treeNode("b_i_l"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
+	: block_item 								{$$ = $1;}
+	| block_item_list block_item 				{treeNode *temp = new treeNode("block_items"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
 	;
 
 block_item
-	: declaration 								{treeNode *temp = new treeNode("b_i"); temp->children.push_back($1); $$ = temp;}
-	| statement 								{treeNode *temp = new treeNode("b_i"); temp->children.push_back($1); $$ = temp;}
+	: declaration 								{$$ = $1;}
+	| statement 								{$$ = $1;}
 	;
 
 statement
-	: compound_statement 						{treeNode *temp = new treeNode("statement"); temp->children.push_back($1); $$ = temp;}
-	| expression_statement  					{treeNode *temp = new treeNode("statement"); temp->children.push_back($1); $$ = temp;}
-	| selection_statement  					 	{treeNode *temp = new treeNode("statement"); temp->children.push_back($1); $$ = temp;}
-	| iteration_statement   					{treeNode *temp = new treeNode("statement"); temp->children.push_back($1); $$ = temp;}
-	| jump_statement        					{treeNode *temp = new treeNode("statement"); temp->children.push_back($1); $$ = temp;}
+	: compound_statement 						{$$ = $1;}
+	| expression_statement  					{$$ = $1;}
+	| selection_statement  					 	{$$ = $1;}
+	| iteration_statement   					{$$ = $1;}
+	| jump_statement        					{$$ = $1;}
 	;
 
 expression_statement
-	: ';'										{treeNode *temp = new treeNode("exp_stat"); $$ = temp;}
-	| expression ';'							{treeNode *temp = new treeNode("exp_stat"); temp->children.push_back($1); $$ = temp;}
+	: ';'										{treeNode *temp = new treeNode(";"); $$ = temp;}
+	| expression ';'							{$$ = $1;}
 	;
 
 selection_statement
@@ -198,11 +215,11 @@ jump_statement
 	;
 
 expression
-	: assignment_expression 					{treeNode *temp = new treeNode("expression"); temp->children.push_back($1); $$ = temp;}
+	: assignment_expression 					{$$ = $1;}
 	;
 
 assignment_expression
-	: conditional_expression											{treeNode *temp = new treeNode("assignment"); temp->children.push_back($1); $$ = temp;}
+	: conditional_expression											{$$ = $1;}
 	| unary_expression assignment_operator assignment_expression		{treeNode *temp = new treeNode("assignment"); temp->children.push_back($1); temp->children.push_back($2); temp->children.push_back($3); $$ = temp;}
 	;
 
@@ -211,7 +228,7 @@ assignment_operator
 	;
 
 conditional_expression
-	: logical_or_expression												{treeNode *temp = new treeNode("conditional"); temp->children.push_back($1); $$ = temp;}
+	: logical_or_expression												{$$ = $1;}
 	| logical_or_expression '?' expression ':' conditional_expression   {treeNode *temp = new treeNode("conditional"); temp->children.push_back($1); temp->children.push_back($3); temp->children.push_back($5); $$ = temp;}
 	;
 
@@ -279,22 +296,29 @@ unary_operator
 
 postfix_expression
 	: primary_expression									{$$ = $1;}
-	| postfix_expression '[' expression ']'					{treeNode *temp = new treeNode("POSTFIX[ ]"); temp->children.push_back($1); temp->children.push_back($3); $$ = temp;}
-	| postfix_expression '(' ')'							{treeNode *temp = new treeNode("POSTFIX()"); temp->children.push_back($1); $$ = temp;}
-	| postfix_expression '(' argument_expression_list ')'	{treeNode *temp = new treeNode("POSTFIX( )"); temp->children.push_back($1); temp->children.push_back($3); $$ = temp;}
-	| postfix_expression INC_OP								{treeNode *temp = new treeNode("POSTFIX INC"); temp->children.push_back($1); $$ = temp;}
-	| postfix_expression DEC_OP								{treeNode *temp = new treeNode("POSTFIX DEC"); temp->children.push_back($1); $$ = temp;}
+	| postfix_expression '[' expression ']'					{treeNode *temp = new treeNode("[ ]"); temp->children.push_back($1); temp->children.push_back($3); $$ = temp;}
+	| postfix_expression '(' ')'							{treeNode *temp = new treeNode("()"); temp->children.push_back($1); $$ = temp;}
+	| postfix_expression '(' argument_expression_list ')'	{treeNode *temp = new treeNode("( )"); temp->children.push_back($1); temp->children.push_back($3); $$ = temp;}
+	| postfix_expression INC_OP								{treeNode *temp = new treeNode("INC"); temp->children.push_back($1); $$ = temp;}
+	| postfix_expression DEC_OP								{treeNode *temp = new treeNode("DEC"); temp->children.push_back($1); $$ = temp;}
 	;
 
 primary_expression
-	: IDENTIFIER											{treeNode *temp = new treeNode("Id"); $$ = temp;} /* TODO: Convert treeNode here back to IdentNode*/
+	: IDENTIFIER											{
+																if ($1) {
+					 												$$ = new IdentNode($1);
+																}
+					 											else {
+					 												$$ = new IdentNode("NO ARGS");
+					 											}
+															} /* TODO: Convert treeNode here back to IdentNode*/
 	| constant 												{$$ = $1;}
 	| '(' expression ')'									{$$ = $2;}
 	;
 
 constant
-	: I_CONSTANT /* includes character_constant */			{treeNode *temp = new treeNode("constant"); $$ = temp;}
-	| F_CONSTANT								  			{treeNode *temp = new treeNode("constant"); $$ = temp;}
+	: I_CONSTANT /* includes character_constant */			{ConstNode *temp = new ConstNode($1); $$ = temp;}
+	| F_CONSTANT								  			{ConstNode *temp = new ConstNode($1); $$ = temp;}
 	;
 
 argument_expression_list

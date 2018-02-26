@@ -21,7 +21,15 @@ char depth[2056];
 int di;
 void printTree(treeNode* tree) {
 
-  std::cout << tree->type << std::endl;
+  if (tree->type == "Const") {
+    std::cout << ((ConstNode*)tree)->ival << std::endl;
+  }
+  else if (tree->type == "Ident") {
+    std::cout << ((IdentNode*)tree)->name << std::endl;
+  }
+  else {
+    std::cout << tree->type << std::endl;
+  }
 
   for (int i = 0; i < tree->children.size(); i++) {
     std::cout << depth << "  --";
