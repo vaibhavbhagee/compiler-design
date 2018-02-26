@@ -75,12 +75,19 @@ treeNode *ASTree = NULL;
 %%
 
 start_state
-	: translation_unit 							{treeNode *rootNode = new treeNode("start"); rootNode->children.push_back($1); $$ = rootNode; ASTree = $$;}
+	: translation_unit 							{treeNode *rootNode = new treeNode("start"); rootNode->children = $1->children; $$ = rootNode; ASTree = $$;}
 	;
 
 translation_unit
-	: external_declaration 						{$$ = $1;}
-	| translation_unit external_declaration 	{treeNode *temp = new treeNode("tu"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
+	: external_declaration 						{treeNode *temp = new treeNode("tu"); temp->children.push_back($1); $$ = temp;}
+	| translation_unit external_declaration 	{	treeNode *temp = new treeNode("tu"); 
+													for(int i = 0; i<$1->children.size(); i++)
+													{
+														temp->children.push_back($1->children[i]);
+													} 
+													temp->children.push_back($2); 
+													$$ = temp;
+												}
 	;
 
 external_declaration
@@ -89,12 +96,20 @@ external_declaration
 	;
 
 declaration
-	: declaration_specifiers init_declarator_list ';' {treeNode *temp = new treeNode("decl"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
+	: declaration_specifiers init_declarator_list ';' 	{	
+															treeNode *temp = new treeNode("decl"); 
+															for (int i = 0; i<$1->children.size(); i++)
+															{
+																temp->children.push_back($1->children[i]);
+															}
+															temp->children.push_back($2); 
+															$$ = temp;
+														}
 	;
 
 declaration_specifiers
 	: storage_class_specifier type_specifier 	{treeNode *temp = new treeNode("decl_spec"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
-	| type_specifier						 	{$$ = $1;}
+	| type_specifier						 	{treeNode *temp = new treeNode("decl_spec"); temp->children.push_back($1); $$ = temp;}
 	;
 
 storage_class_specifier
@@ -111,8 +126,16 @@ type_specifier
 	;
 
 init_declarator_list
-	: init_declarator 							{$$ = $1;}
-	| init_declarator_list ',' init_declarator  {treeNode *temp = new treeNode("init_decl_list"); temp->children.push_back($1); temp->children.push_back($3); $$ = temp;}
+	: init_declarator 							{treeNode *temp = new treeNode("init_decl_list"); temp->children.push_back($1); $$ = temp;}
+	| init_declarator_list ',' init_declarator  {
+													treeNode *temp = new treeNode("init_decl_list"); 
+													for (int i = 0; i<$1->children.size(); i++)
+													{
+														temp->children.push_back($1->children[i]);
+													}
+													temp->children.push_back($3); 
+													$$ = temp;
+												}
 	;
 
 init_declarator
@@ -120,12 +143,12 @@ init_declarator
 	;
 
 declarator
-	: pointer direct_declarator 				{treeNode *temp = new treeNode("declr"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
+	: pointer direct_declarator 				{treeNode *temp = new treeNode("POINTER"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
 	| direct_declarator							{$$ = $1;}
 	;
 
 direct_declarator
-	: IDENTIFIER								{IdentNode *temp = new IdentNode($1); $$ = temp;}
+	: IDENTIFIER								{IdentNode *temp = new IdentNode($1); treeNode *arr = new treeNode("VARIABLE"); arr->children.push_back(temp); $$ = arr;}
 	| IDENTIFIER '[' I_CONSTANT ']'				{
 													IdentNode *temp = new IdentNode($1);
 													ConstNode *temp2 = new ConstNode($3);
@@ -135,18 +158,27 @@ direct_declarator
 												}
 	| IDENTIFIER '(' parameter_type_list ')'	{
 													IdentNode *temp = new IdentNode($1);
-	 												temp->children.push_back($3);
-	 												$$ = temp; 
+	 												treeNode *arr = new treeNode("FUNCTION");
+													arr->children.push_back(temp); arr->children.push_back($3);
+													$$ = arr;
 		 										}
 	;
 
-pointer
-	: '*' pointer /* Check multiple pointers*/  {treeNode *temp = new treeNode("*"); $$ = temp;}
-	| '*'										{treeNode *temp = new treeNode("*"); $$ = temp;}
+pointer											/*TODO: Can add multiple pointers*/
+	: '*'										{treeNode *temp = new treeNode("*"); $$ = temp;}
 	;
 
 function_definition
-	: declaration_specifiers declarator compound_statement 		{treeNode *temp = new treeNode("FUNC"); temp->children.push_back($1); temp->children.push_back($2); temp->children.push_back($3); $$ = temp;}
+	: declaration_specifiers declarator compound_statement 		{
+																	treeNode *temp = new treeNode("FUNC"); 
+																	for (int i = 0; i<$1->children.size(); i++)
+																	{
+																		temp->children.push_back($1->children[i]);
+																	} 
+																	temp->children.push_back($2); 
+																	temp->children.push_back($3); 
+																	$$ = temp;
+																}
 	;
 
 parameter_type_list
@@ -155,23 +187,37 @@ parameter_type_list
 	;
 
 parameter_list
-	: parameter_declaration  					{$$ = $1;}
-	| parameter_list ',' parameter_declaration  {treeNode *temp = new treeNode("params"); temp->children.push_back($1); temp->children.push_back($3); $$ = temp;}
+	: parameter_declaration  					{treeNode *temp = new treeNode("params"); temp->children.push_back($1); $$ = temp;}
+	| parameter_list ',' parameter_declaration  {
+													treeNode *temp = new treeNode("params"); 
+													for (int i = 0; i<$1->children.size(); i++)
+													{
+														temp->children.push_back($1->children[i]);
+													}
+													temp->children.push_back($3); 
+													$$ = temp;
+												}
 	;
 
-parameter_declaration
-	: type_specifier IDENTIFIER					{treeNode *temp = new treeNode("param_decl"); temp->children.push_back($1); $$ = temp;}
-	| type_specifier pointer IDENTIFIER 		{treeNode *temp = new treeNode("param_decl"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
+parameter_declaration							/*TODO: Identifier added here, check if actually required*/
+	: type_specifier IDENTIFIER					{treeNode *temp = new treeNode("param_decl"); temp->children.push_back($1); temp->children.push_back(new IdentNode($2)); $$ = temp;}
+	| type_specifier pointer IDENTIFIER 		{treeNode *temp = new treeNode("param_decl"); temp->children.push_back($1); temp->children.push_back($2); temp->children.push_back(new IdentNode($3)); $$ = temp;}
 	;
 
 compound_statement
-	: '{' '}'									{treeNode *temp = new treeNode("{}"); $$ = temp;}
-	| '{'  block_item_list '}'					{treeNode *temp = new treeNode("BLOCK"); temp->children.push_back($2); $$ = temp;}
+	: '{' '}'									{treeNode *temp = new treeNode("BLOCK"); $$ = temp;}
+	| '{'  block_item_list '}'					{$$ = $2;}
 	;
 
 block_item_list
-	: block_item 								{$$ = $1;}
-	| block_item_list block_item 				{treeNode *temp = new treeNode("block_items"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
+	: block_item 								{treeNode *temp = new treeNode("BLOCK"); temp->children.push_back($1); $$ = temp;}
+	| block_item_list block_item 				{	treeNode *temp = new treeNode("BLOCK"); 
+													for (int i = 0; i < $1->children.size(); i++) {
+														temp->children.push_back($1->children[i]);
+													} 
+													temp->children.push_back($2); 
+													$$ = temp;
+												}
 	;
 
 block_item
@@ -309,8 +355,16 @@ constant
 	;
 
 argument_expression_list
-	: assignment_expression									{$$ = $1;}
-	| argument_expression_list ',' assignment_expression	{treeNode *temp = new treeNode("assign_list"); temp->children.push_back($1); temp->children.push_back($3); $$ = temp;}
+	: assignment_expression									{treeNode *temp = new treeNode("arg_list"); temp->children.push_back($1); $$ = temp;}
+	| argument_expression_list ',' assignment_expression	{
+																treeNode *temp = new treeNode("arg_list"); 
+																for (int i = 0; i<$1->children.size(); i++)
+																{
+																	temp->children.push_back($1->children[i]);
+																}
+																temp->children.push_back($3); 
+																$$ = temp;
+															}
 	;
 
 %%
