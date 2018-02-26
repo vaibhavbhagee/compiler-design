@@ -9,7 +9,7 @@
 extern "C" int yylex();
 int yyparse();
 extern "C" FILE *yyin;
-extern "C" treeNode ASTree;
+extern "C" treeNode *ASTree;
 
 static void usage()
 {
@@ -19,21 +19,21 @@ static void usage()
 // print AST - unix style
 char depth[2056];
 int di;
-void printTree(treeNode tree) {
+void printTree(treeNode* tree) {
 
-  std::cout << tree.type << std::endl;
+  std::cout << tree->type << std::endl;
 
-  for (int i = 0; i < tree.children.size(); i++) {
+  for (int i = 0; i < tree->children.size(); i++) {
     std::cout << depth << "  --";
 
     // push
     depth[di++] = ' ';
-    depth[di++] = (i < tree.children.size() - 1)?'|':' ';
+    depth[di++] = (i < tree->children.size() - 1)?'|':' ';
     depth[di++] = ' ';
     depth[di++] = ' ';
     depth[di] = 0;
 
-    printTree(tree.children[i]);
+    printTree(tree->children[i]);
 
     //pop
     depth[di -= 4] = 0;
