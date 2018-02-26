@@ -189,9 +189,11 @@ static int check_type(void)
     default:                         /* includes undefined */
     // allocate sval and copy yytext to it
     yylval.sval = new char[yyleng];
-    for (int i = 0; i < yyleng; i++) {
+    int i = 0;
+    for (; i < yyleng; i++) {
         yylval.sval[i] = yytext[i];
     }
+        yylval.sval[i] = '\0';
         return IDENTIFIER;
     }
 }
