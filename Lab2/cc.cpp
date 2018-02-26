@@ -16,12 +16,12 @@ static void usage()
   printf("Usage: cc <prog.c>\n");
 }
 
-
+// print AST - unix style
 char depth[2056];
 int di;
 void printTree(treeNode tree) {
 
-  std::cout << tree.name << std::endl;
+  std::cout << tree.type << std::endl;
 
   for (int i = 0; i < tree.children.size(); i++) {
     std::cout << depth << "  --";
@@ -53,7 +53,7 @@ main(int argc, char **argv)
   int ret_val = yyparse();
 
   printTree(ASTree);
-  // std::cout << ASTree.children[0].children[0].children[0].name <<std::endl;
+  // std::cout << ASTree.children[0].children[0].children.size() << std::endl;
   std::cout << "retv = " << ret_val << std::endl;
   exit(0);
 }
