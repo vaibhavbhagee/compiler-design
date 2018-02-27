@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <iostream>
 
-#include "treeNode.hpp"
+#include "semanticAnalysis.hpp"
 #include "c.tab.hpp"
 
 extern "C" int yylex();
@@ -61,6 +61,13 @@ main(int argc, char **argv)
   int ret_val = yyparse();
 
   printTree(ASTree);
+
+  // Check Declarations
+  std::stack<scope> scopes;
+  std::unordered_map<std::string, std::vector<std::string> > functions;
+  
+  ret_val = checkDeclUse(ASTree, "VOID", scopes, functions);
+
   // std::cout << ASTree.children[0].children[0].children.size() << std::endl;
   std::cout << "retv = " << ret_val << std::endl;
   exit(0);
