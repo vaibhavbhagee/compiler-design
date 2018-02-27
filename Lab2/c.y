@@ -126,9 +126,9 @@ type_specifier
 	;
 
 init_declarator_list
-	: init_declarator 							{treeNode *temp = new treeNode("init_decl_list"); temp->children.push_back($1); $$ = temp;}
+	: init_declarator 							{treeNode *temp = new treeNode("init_decl"); temp->children.push_back($1); $$ = temp;}
 	| init_declarator_list ',' init_declarator  {
-													treeNode *temp = new treeNode("init_decl_list"); 
+													treeNode *temp = new treeNode("init_decl"); 
 													for (int i = 0; i<$1->children.size(); i++)
 													{
 														temp->children.push_back($1->children[i]);
@@ -143,7 +143,7 @@ init_declarator
 	;
 
 declarator
-	: pointer direct_declarator 				{treeNode *temp = new treeNode("POINTER"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
+	: pointer direct_declarator 				{treeNode *temp = new treeNode("POINTER"); $1->children.push_back($2); $$ = $1;}
 	| direct_declarator							{$$ = $1;}
 	;
 
@@ -164,8 +164,9 @@ direct_declarator
 		 										}
 	;
 
-pointer											/*TODO: Can add multiple pointers*/
-	: '*'										{treeNode *temp = new treeNode("*"); $$ = temp;}
+pointer											
+	: '*'										{treeNode *temp = new treeNode("POINTER"); $$ = temp;}
+	| '*' pointer 								{treeNode *temp = new treeNode("POINTER"); temp->children.push_back($2); $$ = temp;}
 	;
 
 function_definition
@@ -239,13 +240,13 @@ expression_statement
 	;
 
 selection_statement
-	: IF '(' expression ')' statement ELSE statement  								{treeNode *temp = new treeNode("ITE"); temp->children.push_back($3);  temp->children.push_back($5);  temp->children.push_back($7); $$ = temp;}
-	| IF '(' expression ')' statement 				  								{treeNode *temp = new treeNode("IF"); temp->children.push_back($3);  temp->children.push_back($5); $$ = temp;}
+	: IF '(' expression ')' statement ELSE statement  								{treeNode *temp = new treeNode("ITE"); treeNode *temp2 = new treeNode("CONDITION"); temp2->children.push_back($3); temp->children.push_back(temp2); temp->children.push_back($5);  temp->children.push_back($7); $$ = temp;}
+	| IF '(' expression ')' statement 				  								{treeNode *temp = new treeNode("IF"); treeNode *temp2 = new treeNode("CONDITION"); temp2->children.push_back($3);  temp->children.push_back(temp2); temp->children.push_back($5); $$ = temp;}
 	;
 
 iteration_statement
-	: WHILE '(' expression ')' statement 											{treeNode *temp = new treeNode("WHILE"); temp->children.push_back($3);  temp->children.push_back($5); $$ = temp;}
-	| DO statement WHILE '(' expression ')' ';'										{treeNode *temp = new treeNode("DO-WHILE"); temp->children.push_back($2);  temp->children.push_back($5); $$ = temp;}
+	: WHILE '(' expression ')' statement 											{treeNode *temp = new treeNode("WHILE"); treeNode *temp2 = new treeNode("CONDITION"); temp2->children.push_back($3); temp->children.push_back(temp2); temp->children.push_back($5); $$ = temp;}
+	| DO statement WHILE '(' expression ')' ';'										{treeNode *temp = new treeNode("DO-WHILE"); temp->children.push_back($2); treeNode *temp2 = new treeNode("CONDITION"); temp2->children.push_back($5); temp->children.push_back(temp2); $$ = temp;}
 	| FOR '(' expression_statement expression_statement expression ')' statement    {treeNode *temp = new treeNode("FOR"); temp->children.push_back($3);  temp->children.push_back($4); temp->children.push_back($5);  temp->children.push_back($7); $$ = temp;}
 	;
 
@@ -323,7 +324,7 @@ unary_expression
 	: postfix_expression									{$$ = $1;}
 	| INC_OP unary_expression								{treeNode *temp = new treeNode("INC"); temp->children.push_back($2); $$ = temp;}
 	| DEC_OP unary_expression								{treeNode *temp = new treeNode("DEC"); temp->children.push_back($2); $$ = temp;}
-	| unary_operator unary_expression						{treeNode *temp = new treeNode("UNARY"); temp->children.push_back($1); temp->children.push_back($2); $$ = temp;}
+	| unary_operator unary_expression						{$1->children.push_back($2); $$ = $1;}
 	;
 
 unary_operator
@@ -331,14 +332,14 @@ unary_operator
 	| '*'													{treeNode *temp = new treeNode("*"); $$ = temp;}
 	| '+'													{treeNode *temp = new treeNode("+"); $$ = temp;}
 	| '-'													{treeNode *temp = new treeNode("-"); $$ = temp;}
-	| '!'													{treeNode *temp = new treeNode("!"); $$ = temp;}
+	| '!'													{treeNode *temp = new treeNode("NOT"); $$ = temp;}
 	;
 
 postfix_expression
 	: primary_expression									{$$ = $1;}
 	| postfix_expression '[' expression ']'					{treeNode *temp = new treeNode("[ ]"); temp->children.push_back($3); $1->children.push_back(temp); $$ = $1;}
 	| postfix_expression '(' ')'							{$$ = $1;}
-	| postfix_expression '(' argument_expression_list ')'	{treeNode *temp = new treeNode("( )"); temp->children.push_back($3); $1->children.push_back(temp); $$ = $1;}
+	| postfix_expression '(' argument_expression_list ')'	{$1->children.push_back($3); $$ = $1;}
 	| postfix_expression INC_OP								{treeNode *temp = new treeNode("INC"); $1->children.push_back(temp); $$ = temp;}
 	| postfix_expression DEC_OP								{treeNode *temp = new treeNode("DEC"); $1->children.push_back(temp); $$ = temp;}
 	;
