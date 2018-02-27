@@ -39,3 +39,11 @@ void printf(int a, int b, int c)
 
 	return;
 }
+
+void scanf(void) 
+{
+	int i;
+	for (i = 0; i < 5; i++) {
+		return;
+	}
+}

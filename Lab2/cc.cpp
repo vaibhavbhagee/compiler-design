@@ -20,6 +20,7 @@ static void usage()
 char depth[2056];
 int di;
 void printTree(treeNode* tree) {
+  if (tree == NULL) {return;}
 
   if (tree->type == "Const") {
     std::cout << ((ConstNode*)tree)->ival << std::endl;

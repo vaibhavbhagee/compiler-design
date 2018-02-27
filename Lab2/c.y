@@ -340,8 +340,8 @@ postfix_expression
 	| postfix_expression '[' expression ']'					{treeNode *temp = new treeNode("[ ]"); temp->children.push_back($3); $1->children.push_back(temp); $$ = $1;}
 	| postfix_expression '(' ')'							{$$ = $1;}
 	| postfix_expression '(' argument_expression_list ')'	{$1->children.push_back($3); $$ = $1;}
-	| postfix_expression INC_OP								{treeNode *temp = new treeNode("INC"); $1->children.push_back(temp); $$ = temp;}
-	| postfix_expression DEC_OP								{treeNode *temp = new treeNode("DEC"); $1->children.push_back(temp); $$ = temp;}
+	| postfix_expression INC_OP								{treeNode *temp = new treeNode("INC"); temp->children.push_back($1); $$ = temp;}
+	| postfix_expression DEC_OP								{treeNode *temp = new treeNode("DEC"); temp->children.push_back($1); $$ = temp;}
 	;
 
 primary_expression

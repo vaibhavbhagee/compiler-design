@@ -47,6 +47,38 @@ class scope {
 		return false;
 	}
 };
+
+std::vector<std::string> getFuncParams(treeNode* func_node, std::string type) {
+	std::vector<std::string> fparams;
+
+	//iterate over params - each param_decl
+	for (auto child : func_node->children[1]->children) { 
+		fparams.push_back(child->children[0]->type);
+		// push in the parameter names - push into scope of function later
+		fparams.push_back(((IdentNode*)(child->children[1]))->name);
+	}
+
+	//return type is last param
+	fparams.push_back(type); 
+	return fparams;
+}
+
+scope expandScope(scope &old_scope, treeNode* func_node, 
+	std::unordered_map<std::string, std::vector<std::string> > &functions) {
+
+	// copy old scope
+	scope new_scope = scope(old_scope);
+	std::string fname = ((IdentNode*)(func_node->children[1]->children[0]))->name;
+	
+	// put all func parameters in scope
+	treeNode* params = func_node->children[1]->children[1];
+	if (params->children.size()) { // for void functions
+		for (auto child : params->children) {
+			new_scope.add_symbol( ((IdentNode*)(child->children[1]))->name, child->children[0]->type );
+		}			
+	}
+	return new_scope;
+}
 	
 bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scopes,
  std::unordered_map<std::string, std::vector<std::string> > &functions) {
@@ -72,16 +104,7 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 		auto it = functions.find(fname);
 		bool chk1 = it == functions.end(); 
 		if (chk1) { //NOT Declared previously
-			std::vector<std::string> fparams;
-			//iterate over params - each param_decl
-			for (auto child : node->children[1]->children) { 
-				fparams.push_back(child->children[0]->type);
-				// push in the parameter names - push into scope of function later
-				fparams.push_back(((IdentNode*)(child->children[1]))->name);
-			}
-			//return type is last param
-			fparams.push_back(curr_type); 
-			functions[fname] = fparams;
+			functions[fname] = getFuncParams(node, curr_type);
 			return true;
 		}
 		else {
@@ -116,18 +139,11 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 		   the argument list of function should have argument types,
 		   and identifiers, which are put into current scope
 		*/
-		scopes.push(scope(&scopes.top()));
-		std::string fname = ((IdentNode*)(node->children[1]->children[0]))->name;
-		treeNode* params = node->children[1]->children[1];
-		if (params->children.size()) { // for void functions
-			for (auto child : params->children) {
-				scopes.top().add_symbol(((IdentNode*)(child->children[1]))->name, child->children[0]->type);
-			}			
-		}
+		scopes.push(expandScope(scopes.top(), node, functions));
 
 		bool chk = isDeclared && checkDeclUse(node->children[2], curr_type, scopes, functions);
-		scopes.pop();
-		// std::cout << type << fname << " " << chk << std::endl;
+		scopes.pop(); 
+		// std::cout <<type << fname << " " << chk << std::endl;
 		return chk;
 	}
 	else if (type == "WHILE") {
@@ -142,12 +158,6 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 		scopes.pop();
 		return chk;
 	}
-	// else if (type == "FOR") {
-	// 	scopes.push(scope(&scopes.top()));
-	// 	bool chk = true;
-	// 	scopes.pop();
-	// 	return chk;
-	// }
 	else if (type == "Ident") {
 		// for variable
 		std::string name = ((IdentNode*)(node))->name;
@@ -185,3 +195,4 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 		return res;
 	}
 }
+
