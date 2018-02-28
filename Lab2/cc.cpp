@@ -23,7 +23,16 @@ void printTree(treeNode* tree) {
   if (tree == NULL) {return;}
 
   if (tree->type == "Const") {
-    std::cout << ((ConstNode*)tree)->ival << std::endl;
+    std::string name = ((ConstNode*)tree)->name;
+    if (name == "INT"){
+      std::cout << ((ConstNode*)tree)->ival << std::endl;
+    }
+    else if (name == "FLOAT") {
+      std::cout << ((ConstNode*)tree)->fval << std::endl;
+    }
+    else {
+      std::cout << ((ConstNode*)tree)->sval << std::endl;
+    }
   }
   else if (tree->type == "Ident") {
     std::cout << ((IdentNode*)tree)->name << std::endl;
@@ -63,12 +72,7 @@ main(int argc, char **argv)
 
   printTree(ASTree);
 
-  // Check Declarations
-  std::stack<scope> scopes;
-  std::unordered_map<std::string, std::vector<std::string> > functions;
-  
-  ret_val = checkDeclUse(ASTree, "VOID", scopes, functions);
-
+  ret_val = semanticCheck(ASTree);
   // std::cout << ASTree.children[0].children[0].children.size() << std::endl;
   std::cout << "retv = " << ret_val << std::endl;
   exit(0);

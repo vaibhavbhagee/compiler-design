@@ -328,7 +328,7 @@ unary_expression
 	;
 
 unary_operator
-	: '&'													{treeNode *temp = new treeNode("&"); $$ = temp;}
+	: '&'													{treeNode *temp = new treeNode("u&"); $$ = temp;}
 	| '*'													{treeNode *temp = new treeNode("*"); $$ = temp;}
 	| '+'													{treeNode *temp = new treeNode("+"); $$ = temp;}
 	| '-'													{treeNode *temp = new treeNode("-"); $$ = temp;}

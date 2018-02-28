@@ -30,6 +30,7 @@ class treeNode {
 
 class ConstNode : public treeNode {
 	public:
+		std::string name;
 		int ival;
 		float fval;
 		std::string sval;
@@ -40,16 +41,19 @@ class ConstNode : public treeNode {
 
 		ConstNode(int i) {
 			type = "Const";
+			name = "INT";
 			ival = i;
 		}
 
 		ConstNode(float f) {
 			type = "Const";
+			name = "FLOAT";
 			fval = f;
 		}
 
 		ConstNode(std::string s) {
 			type = "Const";
+			name = "STRING";
 			sval = s;
 		}
 };

@@ -1,4 +1,4 @@
-void printf(int x, int y, int c), scanf(void);
+void printf(int x, int y, int z), scanf(void);
 int a[4], b[10];
 float f1, *f2, f2;
 
@@ -7,7 +7,7 @@ int main(void)
   int a, b, c;
   printf(a, b, c);
 
-  return 0;
+  return a + b;
 }
 
 void printf(int a, int b, int c)
@@ -42,8 +42,9 @@ void printf(int a, int b, int c)
 
 void scanf(void) 
 {
-	int i;
+	int i, j;
+	j = 0;
 	for (i = 0; i < 5; i++) {
-		return;
+		j = j + 2;
 	}
 }
