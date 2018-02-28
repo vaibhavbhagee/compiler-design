@@ -5,6 +5,7 @@
 
 #include "semanticAnalysis.hpp"
 #include "c.tab.hpp"
+#include "codeGeneration.hpp"
 
 extern "C" int yylex();
 int yyparse();
