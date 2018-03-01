@@ -4,10 +4,14 @@
 #include <string>
 #include <vector>
 
+#include "llvmHeaders.hpp"
+
 class treeNode {
 	public:
 		std::string type;
 		std::vector<treeNode*> children;
+
+		// virtual Value* codegen();
 
 		treeNode() {
 			type = "";
@@ -23,6 +27,29 @@ class treeNode {
 		}
 
 		treeNode(treeNode *t) {
+			type = t->type;
+			children = t->children;
+		}
+};
+
+class FuncNode : public treeNode {
+	public:
+		Function* code_generate();
+
+		FuncNode() {
+			type = "";
+		}
+
+		FuncNode(std::string n) {
+			type = n;
+		}
+
+		FuncNode(FuncNode &t) {
+			type = t.type;
+			children = t.children;
+		}
+
+		FuncNode(FuncNode *t) {
 			type = t->type;
 			children = t->children;
 		}
