@@ -9,6 +9,24 @@
  *
  */
 
+std::stack< std::map<std::string, VALUE_TYPE> > contextStack;
+
+VALUE_TYPE treeNode::codegen() {
+
+}
+
+VALUE_TYPE IdentNode::codegen() {
+
+}
+
+VALUE_TYPE ConstNode::codegen() {
+
+}
+
+FUNCTION_TYPE FuncNode::code_generate() {
+
+}
+
 void codegen(treeNode* AST) {
-	
+	// AST->codegen();
 }
