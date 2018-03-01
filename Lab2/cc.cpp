@@ -76,7 +76,7 @@ main(int argc, char **argv)
 
   // Semantic analysis to ensure a) Declaration before use and b) Type checking
   ret_val = semanticCheck(ASTree);
-  std::cout << "retv = " << ret_val << std::endl;
+  std::cout << "retv = " << !ret_val << std::endl;
 
   // LLVM IR Code generation
   TheModule = new Module("coge_gen_output", getGlobalContext());

@@ -60,10 +60,11 @@ class scope {
 	}
 };
 
-extern std::vector<std::string> getFuncDeclParams(treeNode* func_node, std::string type);
-extern scope expandScope(scope &old_scope, treeNode* func_node);
-extern bool matchFuncArgs(std::vector<std::string> def_params, std::vector<treeNode*> given_params);
-extern bool matchFuncUseArgs(std::vector<std::string> def_params, std::vector<std::string> given_params);
+std::vector<std::string> getFuncDeclParams(treeNode* func_node, std::string type);
+scope expandScope(scope &old_scope, treeNode* func_node);
+bool matchFuncArgs(std::vector<std::string> def_params, std::vector<treeNode*> given_params);
+bool matchFuncUseArgs(std::vector<std::string> def_params, std::vector<std::string> given_params);
+
 extern bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scope);
 extern std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &scope);
 extern bool semanticCheck(treeNode* ASTree);
