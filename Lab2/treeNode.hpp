@@ -11,7 +11,7 @@ class treeNode {
 		std::string type;
 		std::vector<treeNode*> children;
 
-		// virtual Value* codegen();
+		virtual VALUE_TYPE codegen();
 
 		treeNode() {
 			type = "";
@@ -34,7 +34,8 @@ class treeNode {
 
 class FuncNode : public treeNode {
 	public:
-		Function* code_generate();
+		
+		FUNCTION_TYPE code_generate();
 
 		FuncNode() {
 			type = "";
@@ -62,6 +63,8 @@ class ConstNode : public treeNode {
 		float fval;
 		std::string sval;
 
+		VALUE_TYPE codegen() override;
+
 		ConstNode() {
 			type = "Const";
 		}
@@ -88,6 +91,8 @@ class ConstNode : public treeNode {
 class IdentNode : public treeNode {
 	public:
 		std::string name;
+
+		VALUE_TYPE codegen() override;
 
 		IdentNode() {
 			type = "Ident";
