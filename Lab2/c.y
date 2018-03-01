@@ -158,7 +158,7 @@ direct_declarator
 												}
 	| IDENTIFIER '(' parameter_type_list ')'	{
 													IdentNode *temp = new IdentNode($1);
-	 												treeNode *arr = new treeNode("FUNCTION");
+	 												FuncNode *arr = new FuncNode("FUNCTION");
 													arr->children.push_back(temp); arr->children.push_back($3);
 													$$ = arr;
 		 										}
@@ -171,7 +171,7 @@ pointer
 
 function_definition
 	: declaration_specifiers declarator compound_statement 		{
-																	treeNode *temp = new treeNode("FUNC"); 
+																	FuncNode *temp = new FuncNode("FUNC"); 
 																	for (int i = 0; i<$1->children.size(); i++)
 																	{
 																		temp->children.push_back($1->children[i]);
