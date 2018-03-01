@@ -5,6 +5,8 @@ float f1, *f2, f2;
 int main(void)
 {
   int a, b, c;
+  float aa1;
+  aa1 = 2.0;
   printf(a, b, c);
 
   return a + b;

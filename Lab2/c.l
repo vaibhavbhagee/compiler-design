@@ -23,6 +23,7 @@ WS  [ \t\v\n\f]
 
 %{
 #include <stdio.h>
+#include <string>
 #include "c.tab.hpp"
 
 extern void yyerror(const char *);  /* prints grammar violation message */
@@ -93,12 +94,12 @@ static int check_type(void);
 "0"{O}*{IS}?				{ yylval.ival = atoi(yytext); return I_CONSTANT; }
 {CP}?"'"([^'\\\n]|{ES})+"'"		{  yylval.ival = atoi(yytext); return I_CONSTANT; }
 
-{D}+{E}{FS}?				{  yylval.fval = atoi(yytext); return F_CONSTANT; }
-{D}*"."{D}+{E}?{FS}?			{ yylval.fval = atoi(yytext); return F_CONSTANT; }
-{D}+"."{E}?{FS}?			{ yylval.fval = atoi(yytext); return F_CONSTANT; }
-{HP}{H}+{P}{FS}?			{ yylval.fval = atoi(yytext); return F_CONSTANT; }
-{HP}{H}*"."{H}+{P}{FS}?			{ yylval.fval = atoi(yytext); return F_CONSTANT; }
-{HP}{H}+"."{P}{FS}?			{ yylval.fval = atoi(yytext); return F_CONSTANT; }
+{D}+{E}{FS}?				{  yylval.fval = std::stof(yytext); return F_CONSTANT; }
+{D}*"."{D}+{E}?{FS}?			{ yylval.fval = std::stof(yytext); return F_CONSTANT; }
+{D}+"."{E}?{FS}?			{ yylval.fval = std::stof(yytext); return F_CONSTANT; }
+{HP}{H}+{P}{FS}?			{ yylval.fval = std::stof(yytext); return F_CONSTANT; }
+{HP}{H}*"."{H}+{P}{FS}?			{ yylval.fval = std::stof(yytext); return F_CONSTANT; }
+{HP}{H}+"."{P}{FS}?			{ yylval.fval = std::stof(yytext); return F_CONSTANT; }
 
 ({SP}?\"([^"\\\n]|{ES})*\"{WS}*)+	{ return STRING_LITERAL; }
 
