@@ -19,6 +19,9 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 
+#define VALUE_TYPE Value*
+#define FUNCTION_TYPE Function*
+
 using namespace llvm;
 
 #endif
