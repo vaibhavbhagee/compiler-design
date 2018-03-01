@@ -69,12 +69,20 @@ main(int argc, char **argv)
   char const *filename = argv[1];
   yyin = fopen(filename, "r");
   assert(yyin);
-  int ret_val = yyparse();
 
+  // Parsing and AST generation
+  int ret_val = yyparse();
   printTree(ASTree);
 
+  // Semantic analysis to ensure a) Declaration before use and b) Type checking
   ret_val = semanticCheck(ASTree);
-  // std::cout << ASTree.children[0].children[0].children.size() << std::endl;
   std::cout << "retv = " << ret_val << std::endl;
+
+  // LLVM IR Code generation
+  TheModule = new Module("coge_gen_output", getGlobalContext());
+  codegen(ASTree);
+  TheModule->dump();
+  delete TheModule;
+
   exit(0);
 }
