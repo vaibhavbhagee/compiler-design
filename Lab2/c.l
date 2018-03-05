@@ -37,6 +37,8 @@ static int check_type(void);
 #define YY_DECL extern "C" int yylex()
 %}
 
+%option yylineno
+
 %%
 "/*"                                    { comment(); }
 "//".*                                    { /* consume //-comment */ }

@@ -79,7 +79,7 @@ main(int argc, char **argv)
   std::cout << "retv = " << !ret_val << std::endl;
 
   // LLVM IR Code generation
-  TheModule = new Module("coge_gen_output", getGlobalContext());
+  TheModule = new Module("code_gen_output", getGlobalContext());
   codegen(ASTree);
   TheModule->dump();
   delete TheModule;

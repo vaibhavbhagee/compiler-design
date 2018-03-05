@@ -15,12 +15,15 @@ using namespace std;
 extern "C" int yylex();
 int yyparse();
 extern "C" FILE *yyin;
+extern "C" int yylineno;
  
 void yyerror(const char *s);
 
 treeNode *ASTree = NULL;
 
 %}
+
+%locations
 
 //%define api.value.type {struct treeNode}
 
@@ -143,7 +146,14 @@ init_declarator
 	;
 
 declarator
-	: pointer direct_declarator 				{treeNode *temp = new treeNode("POINTER"); $1->children.push_back($2); $$ = $1;}
+	: pointer direct_declarator 				{
+													treeNode *temp2 = $1;
+													while (temp2->children.size()) {
+														temp2 = temp2->children[0];
+													}
+													temp2->children.push_back($2); 
+													$$ = $1;
+												}
 	| direct_declarator							{$$ = $1;}
 	;
 
@@ -202,7 +212,21 @@ parameter_list
 
 parameter_declaration							/*TODO: Identifier added here, check if actually required*/
 	: type_specifier IDENTIFIER					{treeNode *temp = new treeNode("param_decl"); temp->children.push_back($1); temp->children.push_back(new IdentNode($2)); $$ = temp;}
-	| type_specifier pointer IDENTIFIER 		{treeNode *temp = new treeNode("param_decl"); temp->children.push_back($1); temp->children.push_back($2); temp->children.push_back(new IdentNode($3)); $$ = temp;}
+	| type_specifier pointer IDENTIFIER 		{
+													treeNode *temp = new treeNode("param_decl");
+													$1->type += "*";
+													
+													// add * to type
+													treeNode *temp2 = $2;
+													while (temp2->children.size()) {
+														$1->type += "*";
+														temp2 = temp2->children[0];
+													}
+
+													temp->children.push_back($1); 
+													temp->children.push_back(new IdentNode($3)); 
+													$$ = temp;
+												}
 	;
 
 compound_statement
@@ -328,8 +352,8 @@ unary_expression
 	;
 
 unary_operator
-	: '&'													{treeNode *temp = new treeNode("u&"); $$ = temp;}
-	| '*'													{treeNode *temp = new treeNode("*"); $$ = temp;}
+	: '&'													{treeNode *temp = new treeNode("REF"); $$ = temp;}
+	| '*'													{treeNode *temp = new treeNode("DEREF"); $$ = temp;}
 	| '+'													{treeNode *temp = new treeNode("+"); $$ = temp;}
 	| '-'													{treeNode *temp = new treeNode("-"); $$ = temp;}
 	| '!'													{treeNode *temp = new treeNode("NOT"); $$ = temp;}
@@ -374,5 +398,5 @@ argument_expression_list
 void yyerror(const char *s)
 {
 	fflush(stdout);
-	fprintf(stderr, "*** %s\n", s);
+	fprintf(stderr, "%s in line %d or %d\n", s, yylineno, yylineno - 1);
 }

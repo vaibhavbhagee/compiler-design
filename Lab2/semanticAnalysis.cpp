@@ -106,6 +106,17 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 
 	}
 	else if (type == "FUNC") {
+
+		// check if function returns a pointer
+		if (node->children[1]->type == "POINTER") {
+			treeNode* temp = node->children[1];
+			while (temp->type == "POINTER") {
+				node->children[0]->type += "*";
+				temp = temp->children[0];				
+			}
+			node->children[1] = temp;
+		}
+
 		bool isDeclared = checkDeclUse(node->children[1], node->children[0]->type, scopes, functions);
 		/* 
 		   now if signatures match/ or function not declared before, 
@@ -223,7 +234,8 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 			}
 		}
 		else {
-			return scopes.top().find_symbol_type(((IdentNode*)(node))->name);
+			std::string typ = scopes.top().find_symbol_type(((IdentNode*)(node))->name);
+			return typ; 
 		}
 
 	}
@@ -251,7 +263,15 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 	else if (type == "ASSIGN") {
 		std::string lhs = checkType(node->children[0], curr_type, scopes, functions);
 		std::string rhs = checkType(node->children[1], curr_type, scopes, functions);
-		return (lhs == rhs)?"VOID":"";
+		if (lhs == rhs) {
+			return "VOID";
+		}
+		else if (lhs.find("INT") == 0 && rhs == "INT") { //pointer assigned INT
+			return "VOID";
+		}
+		else {
+			return "";
+		}
 	}
 	else if (type == "INC" || type == "DEC") {
 		std::string rhs = checkType(node->children[0], curr_type, scopes, functions);
@@ -260,7 +280,7 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 	else if (type == "PLUS" || type == "MINUS" || type == "MULT" || type == "DIV" || type == "MOD") {
 		std::string lhs = checkType(node->children[0], curr_type, scopes, functions);
 		std::string rhs = checkType(node->children[1], curr_type, scopes, functions);
-		if (lhs == "INT" && rhs == "INT") {
+		if (lhs == "INT" && rhs == lhs) {
 			return "INT";
 		}
 		else if (lhs == "FLOAT" && rhs == "INT") {
@@ -269,17 +289,17 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		else if (lhs == "INT" && rhs == "FLOAT") {
 			return "FLOAT";
 		}
-		else if (lhs == "FLOAT" && rhs == "FLOAT") {
+		else if (lhs == "FLOAT" && rhs == lhs) {
 			return "FLOAT";
 		}
 		else {
 			return "";
 		}
 	}
-	else if (type == "OR" || type == "AND" || type == "XOR" || type == "&") {
+	else if (type == "OR" || type == "AND" || type == "XOR") {
 		std::string lhs = checkType(node->children[0], curr_type, scopes, functions);
 		std::string rhs = checkType(node->children[1], curr_type, scopes, functions);
-		if (lhs == "BOOL" && rhs == "BOOL") {
+		if (lhs == "BOOL" && rhs == lhs) {
 			return "BOOL";
 		}
 		else {
@@ -294,6 +314,19 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 	else if (type == "NOT") {
 		std::string lhs = checkType(node->children[0], curr_type, scopes, functions);
 		return (lhs == "INT" | lhs == "BOOL")?"BOOL":"";
+	}
+	else if (type == "REF") {
+		std::string lhs = checkType(node->children[0], curr_type, scopes, functions);
+		return (lhs + "*");
+	}
+	else if (type == "DEREF") {
+		std::string lhs = checkType(node->children[0], curr_type, scopes, functions);
+		if (lhs.find("*") != std::string::npos) {
+			// a pointer is dereferenced
+			lhs.pop_back();
+			return lhs;
+		}
+		return "";
 	}
 	else if (type == "CONDITION") {
 		std::string cond = checkType(node->children[0], curr_type, scopes, functions);
@@ -328,13 +361,13 @@ bool semanticCheck(treeNode* ASTree) {
   	if (!chk1) {
   		return false;
   	}
-  	std::cerr << "Identifiers are declared before use" << std::endl;
+  	std::cout << "Identifiers are declared before use" << std::endl;
 
   	std::string chk2 = checkType(ASTree, "VOID", scopes, functions);
   	if (chk2 == "") {
   		return false;
   	}
-  	std::cerr << "No typing errors found" << std::endl;
+  	std::cout << "No typing errors found" << std::endl;
 
   	return true;
   
