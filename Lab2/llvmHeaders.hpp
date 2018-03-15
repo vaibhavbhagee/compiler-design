@@ -13,15 +13,21 @@
 // #include "llvm/IR/Type.h"
 // #include "llvm/IR/Verifier.h"
 
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Verifier.h"
+// #include "llvm/ADT/STLExtras.h"
+// #include "llvm/IR/IRBuilder.h"
+// #include "llvm/IR/LLVMContext.h"
+// #include "llvm/IR/Module.h"
+// #include "llvm/IR/Verifier.h"
 
-#define VALUE_TYPE Value*
-#define FUNCTION_TYPE Function*
+#include <llvm-c/Core.h>
+#include <llvm-c/ExecutionEngine.h>
+#include <llvm-c/Target.h>
+#include <llvm-c/Analysis.h>
+#include <llvm-c/BitWriter.h>
 
-using namespace llvm;
+#define VALUE_TYPE LLVMValueRef
+#define FUNCTION_TYPE LLVMValueRef
+
+// using namespace llvm;
 
 #endif

@@ -9,10 +9,10 @@
 #include "treeNode.hpp"
 
 // static LLVMContext TheContext;
-static IRBuilder<> Builder(getGlobalContext());
-static Module* TheModule;
+extern LLVMModuleRef mod;
+extern LLVMBuilderRef builder;
 // static std::map<std::string, Value *> NamedValues;
-extern std::stack< std::map<std::string, Value*> > contextStack;
+extern std::stack< std::map<std::string, VALUE_TYPE> > contextStack;
 
 extern void codegen(treeNode* AST);
 

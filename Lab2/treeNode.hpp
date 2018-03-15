@@ -34,6 +34,7 @@ class treeNode {
 
 class FuncNode : public treeNode {
 	public:
+
 		FUNCTION_TYPE code_generate();
 
 		FuncNode() {
