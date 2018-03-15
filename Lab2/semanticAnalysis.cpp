@@ -208,7 +208,6 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 				since decl before use is checked, we assume function is defined
 				check argument types and get the last args - return type
 			*/
-
 			std::vector<std::string> given_params;
 			for (auto child : node->children[0]->children) { 
 				given_params.push_back(checkType(child, curr_type, scopes, functions));
@@ -317,7 +316,6 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		}
 		return "VOID";
 	}
-
 }
 
 bool semanticCheck(treeNode* ASTree) {
@@ -337,5 +335,4 @@ bool semanticCheck(treeNode* ASTree) {
   	std::cerr << "No typing errors found" << std::endl;
 
   	return true;
-  
 }
