@@ -50,13 +50,14 @@ class scope {
 		sizes.push_front(asize);
 	}
 
-	bool check_scope(std::string Id, int size=0) {
+	int check_scope(std::string Id) {
 		for (int i = 0; i < symbols.size(); i++) {
-			if (symbols[i] == Id && sizes[i] == size) {
-				return true;
+			if (symbols[i] == Id) {
+				// return 1 for variable, n + 1 for array of size n
+				return sizes[i] + 1;
 			}
 		}
-		return false;
+		return 0;
 	}
 };
 

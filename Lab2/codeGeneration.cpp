@@ -9,9 +9,15 @@
  *
  */
 
-std::stack< std::map<std::string, VALUE_TYPE> > contextStack;
+std::stack< std::map<std::string, FUNCTION_TYPE> > funcSymTable;
+std::stack< std::map<std::string, VALUE_TYPE> > symTable;
+std::stack<LLVMContextRef> contextStack;
 
 VALUE_TYPE treeNode::codegen() {
+
+	if (type == "start") {
+		
+	}
 
 }
 
@@ -20,6 +26,16 @@ VALUE_TYPE IdentNode::codegen() {
 }
 
 VALUE_TYPE ConstNode::codegen() {
+
+	if (name == "INT") {
+		return LLVMConstInt(LLVMInt32TypeInContext(contextStack.top()), ival, false);
+	}
+	else if (name == "FLOAT") {
+		return LLVMConstReal(LLVMFloatTypeInContext(contextStack.top()), fval);
+	}
+	else { // String constants
+		return LLVMConstStringInContext(contextStack.top(), sval.c_str(), sval.length(), false);
+	}
 
 }
 
