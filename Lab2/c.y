@@ -100,7 +100,7 @@ external_declaration
 
 declaration
 	: declaration_specifiers init_declarator_list ';' 	{	
-															treeNode *temp = new treeNode("decl"); 
+															DeclNode *temp = new DeclNode("decl"); 
 															for (int i = 0; i<$1->children.size(); i++)
 															{
 																temp->children.push_back($1->children[i]);
@@ -129,9 +129,9 @@ type_specifier
 	;
 
 init_declarator_list
-	: init_declarator 							{treeNode *temp = new treeNode("init_decl"); temp->children.push_back($1); $$ = temp;}
+	: init_declarator 							{InitDeclNode *temp = new InitDeclNode("init_decl"); temp->children.push_back($1); $$ = temp;}
 	| init_declarator_list ',' init_declarator  {
-													treeNode *temp = new treeNode("init_decl"); 
+													InitDeclNode *temp = new InitDeclNode("init_decl"); 
 													for (int i = 0; i<$1->children.size(); i++)
 													{
 														temp->children.push_back($1->children[i]);
@@ -158,30 +158,30 @@ declarator
 	;
 
 direct_declarator
-	: IDENTIFIER								{IdentNode *temp = new IdentNode($1); treeNode *arr = new treeNode("VARIABLE"); arr->children.push_back(temp); $$ = arr;}
+	: IDENTIFIER								{IdentNode *temp = new IdentNode($1); VariableNode *arr = new VariableNode("VARIABLE"); arr->children.push_back(temp); $$ = arr;}
 	| IDENTIFIER '[' I_CONSTANT ']'				{
 													IdentNode *temp = new IdentNode($1);
 													ConstNode *temp2 = new ConstNode($3);
-													treeNode *arr = new treeNode("ARRAY");
+													ArrayNode *arr = new ArrayNode("ARRAY");
 													arr->children.push_back(temp); arr->children.push_back(temp2);
 													$$ = arr;
 												}
 	| IDENTIFIER '(' parameter_type_list ')'	{
 													IdentNode *temp = new IdentNode($1);
-	 												FuncNode *arr = new FuncNode("FUNCTION");
+	 												FunctionNode *arr = new FunctionNode("FUNCTION");
 													arr->children.push_back(temp); arr->children.push_back($3);
 													$$ = arr;
 		 										}
 	;
 
 pointer											
-	: '*'										{treeNode *temp = new treeNode("POINTER"); $$ = temp;}
-	| '*' pointer 								{treeNode *temp = new treeNode("POINTER"); temp->children.push_back($2); $$ = temp;}
+	: '*'										{PointerNode *temp = new PointerNode("POINTER"); $$ = temp;}
+	| '*' pointer 								{PointerNode *temp = new PointerNode("POINTER"); temp->children.push_back($2); $$ = temp;}
 	;
 
 function_definition
 	: declaration_specifiers declarator compound_statement 		{
-																	FuncNode *temp = new FuncNode("FUNC"); 
+																	treeNode *temp = new treeNode("FUNC"); 
 																	for (int i = 0; i<$1->children.size(); i++)
 																	{
 																		temp->children.push_back($1->children[i]);
