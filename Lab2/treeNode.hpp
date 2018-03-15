@@ -32,24 +32,139 @@ class treeNode {
 		}
 };
 
-class FuncNode : public treeNode {
+class DeclNode : public treeNode {
 	public:
-		FUNCTION_TYPE code_generate();
+		VALUE_TYPE codegen() override;
 
-		FuncNode() {
+		DeclNode() {
 			type = "";
 		}
 
-		FuncNode(std::string n) {
+		DeclNode(std::string n) {
 			type = n;
 		}
 
-		FuncNode(FuncNode &t) {
+		DeclNode(DeclNode &t) {
 			type = t.type;
 			children = t.children;
 		}
 
-		FuncNode(FuncNode *t) {
+		DeclNode(DeclNode *t) {
+			type = t->type;
+			children = t->children;
+		}
+};
+
+class InitDeclNode : public treeNode {
+	public:
+		VALUE_TYPE codegen(LLVMTypeRef type);
+
+		InitDeclNode() {
+			type = "";
+		}
+
+		InitDeclNode(std::string n) {
+			type = n;
+		}
+
+		InitDeclNode(InitDeclNode &t) {
+			type = t.type;
+			children = t.children;
+		}
+
+		InitDeclNode(InitDeclNode *t) {
+			type = t->type;
+			children = t->children;
+		}
+};
+
+class VariableNode : public treeNode {
+	public:
+		VALUE_TYPE codegen() override;
+
+		VariableNode() {
+			type = "";
+		}
+
+		VariableNode(std::string n) {
+			type = n;
+		}
+
+		VariableNode(VariableNode &t) {
+			type = t.type;
+			children = t.children;
+		}
+
+		VariableNode(VariableNode *t) {
+			type = t->type;
+			children = t->children;
+		}
+};
+
+class PointerNode : public treeNode {
+	public:
+		VALUE_TYPE codegen() override;
+
+		PointerNode() {
+			type = "";
+		}
+
+		PointerNode(std::string n) {
+			type = n;
+		}
+
+		PointerNode(PointerNode &t) {
+			type = t.type;
+			children = t.children;
+		}
+
+		PointerNode(PointerNode *t) {
+			type = t->type;
+			children = t->children;
+		}
+};
+
+class ArrayNode : public treeNode {
+	public:
+		VALUE_TYPE codegen() override;
+
+		ArrayNode() {
+			type = "";
+		}
+
+		ArrayNode(std::string n) {
+			type = n;
+		}
+
+		ArrayNode(ArrayNode &t) {
+			type = t.type;
+			children = t.children;
+		}
+
+		ArrayNode(ArrayNode *t) {
+			type = t->type;
+			children = t->children;
+		}
+};
+
+class FunctionNode : public treeNode {
+	public:
+		FUNCTION_TYPE code_generate();
+
+		FunctionNode() {
+			type = "";
+		}
+
+		FunctionNode(std::string n) {
+			type = n;
+		}
+
+		FunctionNode(FunctionNode &t) {
+			type = t.type;
+			children = t.children;
+		}
+
+		FunctionNode(FunctionNode *t) {
 			type = t->type;
 			children = t->children;
 		}
