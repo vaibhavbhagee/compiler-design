@@ -1,20 +1,31 @@
 void printf(int **x, int y, int z);
-int*** scanf(void);
-int a[4], b[10];
+int main(int a, int b);
+void scanf(void);
 float f1, **f2, f3;
 
-int main(void)
+int main(int a, int b)
 {
   int a, b, c;
   int** d;
   printf(d, b, c);
 
-  return a + b;
+  if (a == b) {
+  	return a;
+  }
+  else if (a < b) {
+  	return a;
+  }
+  else{
+  	return b;
+  }
+}
+
+void scanf(void){
+	return;
 }
 
 void printf(int **a, int d, int c)
 {
-	b[1] = 5;
 	c = 1;
 	if (c+1 == 2 || c - 1 == 0)
 	{
@@ -43,14 +54,14 @@ void printf(int **a, int d, int c)
 	return;
 }
 
-int*** scanf(void) 
-{
-	int i, j;
-	j = 0;
-	for (i = 0; i < 5; i++) {
-		j = j + 2;
-	}
-	int*** k;
-	***k = j;
-	return k;
-}
+// int*** scanf(void) 
+// {
+// 	int i, j;
+// 	j = 0;
+// 	for (i = 0; i < 5; i++) {
+// 		j = j + 2;
+// 	}
+// 	int*** k;
+// 	***k = j;
+// 	return k;
+// }

@@ -1,10 +1,10 @@
 #include "semanticAnalysis.hpp"
 
-std::vector<std::string> getFuncDeclParams(treeNode* func_node, std::string type) {
+std::vector<std::string> getFuncDeclParams(treeNode* function_node, std::string type) {
 	std::vector<std::string> fparams;
 
 	//iterate over params - each param_decl
-	for (auto child : func_node->children[1]->children) { 
+	for (auto child : function_node->children[1]->children) { 
 		fparams.push_back(child->children[0]->type);
 	}
 
@@ -306,6 +306,11 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		}
 	}
 	else if (type == "EQ" || type == "NEQ") {
+		std::string lhs = checkType(node->children[0], curr_type, scopes, functions);
+		std::string rhs = checkType(node->children[1], curr_type, scopes, functions);
+		return (lhs == rhs)?"BOOL":"";
+	}
+	else if (type == "LT" || type == "GT" || type == "LTE" || type == "GTE" ) {
 		std::string lhs = checkType(node->children[0], curr_type, scopes, functions);
 		std::string rhs = checkType(node->children[1], curr_type, scopes, functions);
 		return (lhs == rhs)?"BOOL":"";
