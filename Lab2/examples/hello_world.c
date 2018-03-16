@@ -4,6 +4,7 @@ int a[4], b[10];
 float f1, **f2, f3;
 // int add(int a, int b);
 
+int main(int a, int b);
 // int main(void)
 // {
 //   // int a, b, c;

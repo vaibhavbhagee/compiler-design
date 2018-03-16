@@ -185,6 +185,39 @@ VALUE_TYPE ConstNode::codegen() {
 
 FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 
+	std::string funcName = ((IdentNode*)children[0])->name;
+
+	std::string childType = children[1]->type;
+
+	if (childType == "VOID") {
+		// Return a function with no params
+		LLVMTypeRef param_types[] = {};
+	    LLVMTypeRef retType = LLVMFunctionType(type, param_types, 0, 0);
+	    LLVMValueRef funcDecl = LLVMAddFunction(mod, funcName.c_str(), retType);
+
+	    // Add to function symbol table
+	    funcSymTable.top()[funcName] = funcDecl;
+
+	    return funcDecl;
+	}
+	else {
+		std::vector<LLVMTypeRef> fparams;
+		LLVMContextRef currContext = contextStack.top();
+
+		for (auto child : children[1]->children) { 
+			fparams.push_back(stringToLLVMType(child->children[0]->type, currContext));
+		}
+
+		LLVMTypeRef* paramTypeList = fparams.data();
+
+		LLVMTypeRef retType = LLVMFunctionType(type, paramTypeList, fparams.size(), 0);
+	    LLVMValueRef funcDecl = LLVMAddFunction(mod, funcName.c_str(), retType);
+
+	    // Add to function symbol table
+	    funcSymTable.top()[funcName] = funcDecl;
+
+	    return funcDecl;
+	}
 }
 
 void codegen(treeNode* AST) {
