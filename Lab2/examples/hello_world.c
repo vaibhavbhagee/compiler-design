@@ -5,16 +5,16 @@ float f1, **f2, f3;
 // int add(int a, int b);
 
 int main1(int a, int b);
-int main(void);
+void main(void);
 
-int main(void)
+void main(void)
 {
   // int a, b, c;
   // int** d;
   // printf(d, b, c);
 
-	f1 = 0.0;
-	return 0;
+	// f1 = 0.0;
+	return;
 }
 
 // void printf(int **a, int d, int c)

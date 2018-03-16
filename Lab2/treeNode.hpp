@@ -200,7 +200,7 @@ class FuncBlockNode : public treeNode {
 
 class CondBlockNode : public treeNode {
 	public:
-		VALUE_TYPE codegen(LLVMBasicBlockRef afterDest); 
+		VALUE_TYPE codegen(LLVMTypeRef retTypeIfReqd, LLVMBasicBlockRef afterDest); 
 
 		CondBlockNode() {
 			type = "";
