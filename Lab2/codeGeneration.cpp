@@ -36,53 +36,41 @@ VALUE_TYPE treeNode::codegen() {
 			}
 			else
 				children[i]->codegen();
-			// else if (children[i]->type == "FUNC") {
-			// 	((ArrayNode*)children[i])->codegen(type);
-			// }
-			// else if (children[i]->type == "POINTER") {
-			// 	((PointerNode*)children[i])->codegen(type);
-			// }
-			// else if (children[i]->type == "FUNCTION") {
-			// 	((FunctionNode*)children[i])->codegen(type);
-			// }
 		}
 		return NULL;
 	}
 	else if (type == "FUNC") {
 		
-		// LLVMContextRef newContext = LLVMContextCreate();
-		// LLVMContextRef newContext = LLVMGetGlobalContext();
-		// LLVMBuilderRef newBuilder = LLVMCreateBuilderInContext(newContext);
 		LLVMContextRef newContext = contextStack.top();
 		LLVMBuilderRef newBuilder = builderStack.top();
 		std::map<std::string, VALUE_TYPE> newVariableMap;
 
-		// contextStack.push(newContext);
-		// builderStack.push(newBuilder);
-		symTable.push(newVariableMap);
+		std::vector<std::string> fparams;
 		
-		// printf("%s\n", children[0]->type.c_str());
 		LLVMTypeRef funcRetType = stringToLLVMType(children[0]->type, newContext);
 		FUNCTION_TYPE funcHeader = ((FunctionNode*)children[1])->codegen( true, funcRetType );
+
+		int index = 0;
+		for (auto child : children[1]->children[1]->children) { 
+			std::string varName = (((IdentNode*)child->children[1])->name);
+			newVariableMap[varName] = LLVMGetParam(funcHeader, index++);
+		}
+
+		symTable.push(newVariableMap);
 
 		LLVMBasicBlockRef entry = LLVMAppendBasicBlock(funcHeader, "entry");
 		LLVMPositionBuilderAtEnd(newBuilder, entry);
 
 		((FuncBlockNode*)children[2])->codegen( funcRetType, funcHeader );
 
-		LLVMContextRef stackContext = contextStack.top();
-		LLVMBuilderRef stackBuilder = builderStack.top();
-
-		// contextStack.pop();
-		// builderStack.pop();
 		symTable.pop();
-
-	    // LLVMDisposeBuilder(stackBuilder);
-	    // LLVMContextDispose(stackContext);
 
 	    return NULL;
 	}
-	
+	else if (type == "RETURN") {
+		return children[0]->codegen();
+	}
+
 	return NULL;
 }
 
@@ -201,8 +189,81 @@ VALUE_TYPE PointerNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 
 }
 
-VALUE_TYPE IdentNode::codegen() {
+VALUE_TYPE searchInSymTable(std::string varName) {
 
+	if (symTable.empty())
+		return NULL;
+
+	std::map< std::string, VALUE_TYPE> topContext = symTable.top();
+
+	if (topContext.find(varName) != topContext.end())
+		return topContext[varName];
+	else {
+		symTable.pop();
+
+		VALUE_TYPE found = searchInSymTable(varName);
+
+		symTable.push(topContext);
+
+		return found;
+	}
+}
+
+FUNCTION_TYPE searchInFuncSymTable(std::string varName) {
+
+	std::map< std::string, FUNCTION_TYPE> topContext = symTable.top();
+
+	if (topContext.find(varName) != topContext.end())
+		return topContext[varName];
+	else {
+		return NULL;
+	}
+}
+
+VALUE_TYPE IdentNode::codegen() {
+	std::string identName = name;
+
+	// Search in variable sym table
+	VALUE_TYPE foundVal = searchInSymTable(identName);
+
+	if (foundVal != NULL) {
+		// Found in variable sym table
+
+		return foundVal;
+	}
+	else {
+		// check in func sym table
+
+		VALUE_TYPE foundInFunc = searchInFuncSymTable(identName);
+
+		if (foundInFunc != NULL) {
+			// Iterate over all the children
+
+			if (children.size() == 0) {
+				// Func takes no args
+
+				LLVMValueRef *temp;
+				LLVMBuilderRef currBuilder = builderStack.top();
+				return LLVMBuildCall(currBuilder, foundInFunc, temp, 0, "ident_ret");
+			} else {
+				// Function takes args
+
+				std::vector<LLVMValueRef> codeForIdents;
+
+				for(auto child: children[0]->children) {
+					codeForIdents.push_back(child->codegen());
+				}
+
+				LLVMBuilderRef currBuilder = builderStack.top();
+				return LLVMBuildCall(currBuilder, foundInFunc, codeForIdents.data(), codeForIdents.size(), "ident_ret");
+			}
+		}
+		else {
+			return NULL;
+		}
+	}
+
+	return NULL;
 }
 
 VALUE_TYPE ConstNode::codegen() {
@@ -262,17 +323,6 @@ FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 }
 
 VALUE_TYPE FuncBlockNode::codegen(LLVMTypeRef retType, LLVMValueRef funcHeader) {
-	// Push a new context and builder, create a basic block ref
-
-	// LLVMContextRef newContext = LLVMContextCreate();
-	// LLVMBuilderRef newBuilder = LLVMCreateBuilderInContext(newContext);
-	// std::map<std::string, VALUE_TYPE> newVariableMap;
-
-	// contextStack.push(newContext);
-	// builderStack.push(newBuilder);
-	// symTable.push(newVariableMap);
-	
-	// LLVMBasicBlockRef entry = LLVMAppendBasicBlock(funcHeader, "entry");
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 	LLVMContextRef currContext = contextStack.top();
@@ -284,11 +334,16 @@ VALUE_TYPE FuncBlockNode::codegen(LLVMTypeRef retType, LLVMValueRef funcHeader) 
 		if (childType == "RETURN") {
 			if (retType == LLVMVoidType())
 				LLVMBuildRetVoid(currBuilder);
-			else
-				children[i]->codegen(); //TODO: Update if return format changes
+			else {
+				LLVMBuildRet(currBuilder, children[i]->codegen()); //TODO: Update if return format changes
+			}
 		}
-		else ;
+		else {
 			// TODO: Write code for all statements here
+			if (children[i]->type == "decl") {
+				((DeclNode*)children[i])->codegen(false);
+			}
+		}
 	}
 
 	return NULL;
