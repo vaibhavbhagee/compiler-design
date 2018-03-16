@@ -14,6 +14,8 @@ std::stack< std::map<std::string, VALUE_TYPE> > symTable;
 std::stack<LLVMContextRef> contextStack;
 std::stack<LLVMBuilderRef> builderStack;
 
+LLVMModuleRef mod;
+
 LLVMTypeRef stringToLLVMType(std::string typeName, LLVMContextRef c) {
 	if (typeName == "INT") return LLVMInt32TypeInContext(c);
 	else if (typeName == "FLOAT") return LLVMFloatTypeInContext(c);
@@ -31,7 +33,7 @@ VALUE_TYPE treeNode::codegen() {
 	for (int i = 0; i < children.size(); ++i)
 	{
 		if (children[i]->type == "decl") {
-			((DeclNode*)children[i])->codegen();
+			((DeclNode*)children[i])->codegen(true);
 		}
 		// else if (children[i]->type == "FUNC") {
 		// 	((ArrayNode*)children[i])->codegen(type);
@@ -47,34 +49,54 @@ VALUE_TYPE treeNode::codegen() {
 
 }
 
-VALUE_TYPE DeclNode::codegen() {
-	std::string type = children[0]->type;
-	LLVMContextRef currContext = contextStack.top();
-	return ((InitDeclNode*)children[1])->codegen( stringToLLVMType(type, currContext) );
+VALUE_TYPE DeclNode::codegen(bool isGlobalContext) {
+	
+	if (!isGlobalContext) {
+		std::string type = children[0]->type;
+		LLVMContextRef currContext = contextStack.top();
+		return ((InitDeclNode*)children[1])->codegen( isGlobalContext, stringToLLVMType(type, currContext) );	
+	}
+	else {
+		std::string type = children[0]->type;
+		LLVMContextRef currContext = contextStack.top();
+		return ((InitDeclNode*)children[1])->codegen( isGlobalContext, stringToLLVMType(type, currContext) );		
+	}
 }
 
-VALUE_TYPE InitDeclNode::codegen(LLVMTypeRef type) {
+VALUE_TYPE InitDeclNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 	// Call children variable, array, pointer and function node codes from here
 
 	for (int i = 0; i < children.size(); ++i)
 	{
 		if (children[i]->type == "VARIABLE") {
-			((VariableNode*)children[i])->codegen(type);
+			((VariableNode*)children[i])->codegen(isGlobalContext, type);
 		}
 		else if (children[i]->type == "ARRAY") {
-			((ArrayNode*)children[i])->codegen(type);
+			((ArrayNode*)children[i])->codegen(isGlobalContext,type);
 		}
 		else if (children[i]->type == "POINTER") {
-			((PointerNode*)children[i])->codegen(type);
+			((PointerNode*)children[i])->codegen(isGlobalContext, type);
 		}
 		else if (children[i]->type == "FUNCTION") {
-			((FunctionNode*)children[i])->codegen(type);
+			((FunctionNode*)children[i])->codegen(isGlobalContext, type);
 		}
 	}
+
 	return NULL;
 }
 
-VALUE_TYPE VariableNode::codegen(LLVMTypeRef type) {
+VALUE_TYPE VariableNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
+
+	if (isGlobalContext)
+	{
+		std::string varName = ((IdentNode*)children[0])->name;
+
+		LLVMValueRef allocate = LLVMAddGlobal(mod, type, varName.c_str());
+
+		// Add to the symbol table
+		symTable.top()[varName] = allocate;
+		return allocate;
+	}
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 	std::string varName = ((IdentNode*)children[0])->name;
@@ -87,7 +109,22 @@ VALUE_TYPE VariableNode::codegen(LLVMTypeRef type) {
 	return allocate;
 }
 
-VALUE_TYPE ArrayNode::codegen(LLVMTypeRef type) {
+VALUE_TYPE ArrayNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
+
+	if (isGlobalContext)
+	{
+		std::string varName = ((IdentNode*)children[0])->name;
+		int arrayLen= ((ConstNode*)children[1])->ival;
+		LLVMTypeRef arrayType = LLVMArrayType(type, arrayLen); // TODO: See about context
+
+		// TODO: Look at the third parameter
+		LLVMValueRef allocate = LLVMAddGlobal(mod, arrayType, varName.c_str());
+
+		symTable.top()[varName] = allocate;
+
+		return allocate;
+	}
+
 	// LLVMBuilderRef currBuilder = builderStack.top();
 	// std::string varName = ((IdentNode*)children[0])->name;
 	// int arrayLen= ((IdentNode*)children[1])->ival;
@@ -99,9 +136,11 @@ VALUE_TYPE ArrayNode::codegen(LLVMTypeRef type) {
 	// symTable.top()[varName] = allocate;
 
 	// return allocate;	
+
+	return NULL;
 }
 
-VALUE_TYPE PointerNode::codegen(LLVMTypeRef type) {
+VALUE_TYPE PointerNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 
 	// TODO: Check about address space, Default is 0
 
@@ -110,18 +149,18 @@ VALUE_TYPE PointerNode::codegen(LLVMTypeRef type) {
 	if (childType == "POINTER") {
 		LLVMTypeRef pointerType = LLVMPointerType(type, 0);
 
-		return ((PointerNode*)children[0])->codegen(pointerType);
+		return ((PointerNode*)children[0])->codegen(isGlobalContext, pointerType);
 	}
 	else if (childType == "VARIABLE") {
 		LLVMTypeRef pointerType = LLVMPointerType(type, 0);
 
-		return ((VariableNode*)children[0])->codegen(pointerType);	
+		return ((VariableNode*)children[0])->codegen(isGlobalContext, pointerType);	
 	}
 	else // FUNCTION
 	{
 		LLVMTypeRef pointerType = LLVMPointerType(type, 0);
 
-		return ((FunctionNode*)children[0])->codegen(pointerType);
+		return ((FunctionNode*)children[0])->codegen(isGlobalContext, pointerType);
 	}
 
 }
@@ -144,7 +183,7 @@ VALUE_TYPE ConstNode::codegen() {
 
 }
 
-FUNCTION_TYPE FunctionNode::codegen(LLVMTypeRef type) {
+FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 
 }
 
@@ -159,19 +198,19 @@ void codegen(treeNode* AST) {
 	symTable.push(variableMap);
 	funcSymTable.push(functionMap);
 
-	LLVMModuleRef mod = LLVMModuleCreateWithNameInContext("my_module", globalContext);
+	mod = LLVMModuleCreateWithNameInContext("my_module", globalContext);
 
 	// Trial
-	LLVMTypeRef param_types[] = {};
-	LLVMTypeRef ret_type = LLVMFunctionType(LLVMVoidType(), param_types, 0, 0);
-	LLVMValueRef sum = LLVMAddFunction(mod, "sum", ret_type);
+	// LLVMTypeRef param_types[] = {};
+	// LLVMTypeRef ret_type = LLVMFunctionType(LLVMVoidType(), param_types, 0, 0);
+	// LLVMValueRef sum = LLVMAddFunction(mod, "sum", ret_type);
 
-	LLVMBasicBlockRef entry = LLVMAppendBasicBlock(sum, "entry");
-	LLVMPositionBuilderAtEnd(globalBuilder, entry);
+	// LLVMBasicBlockRef entry = LLVMAppendBasicBlock(sum, "entry");
+	// LLVMPositionBuilderAtEnd(globalBuilder, entry);
 
 	AST->codegen();
 
-	LLVMBuildRetVoid(globalBuilder);
+	// LLVMBuildRetVoid(globalBuilder);
 
 	FILE *f = fopen("code.txt", "w");
 	if (f == NULL)

@@ -34,7 +34,7 @@ class treeNode {
 
 class DeclNode : public treeNode {
 	public:
-		VALUE_TYPE codegen() override;
+		VALUE_TYPE codegen(bool isGlobalContext);
 
 		DeclNode() {
 			type = "";
@@ -57,7 +57,7 @@ class DeclNode : public treeNode {
 
 class InitDeclNode : public treeNode {
 	public:
-		VALUE_TYPE codegen(LLVMTypeRef type);
+		VALUE_TYPE codegen(bool isGlobalContext, LLVMTypeRef type);
 
 		InitDeclNode() {
 			type = "";
@@ -80,7 +80,7 @@ class InitDeclNode : public treeNode {
 
 class VariableNode : public treeNode {
 	public:
-		VALUE_TYPE codegen(LLVMTypeRef type);
+		VALUE_TYPE codegen(bool isGlobalContext, LLVMTypeRef type);
 
 		VariableNode() {
 			type = "";
@@ -103,7 +103,7 @@ class VariableNode : public treeNode {
 
 class PointerNode : public treeNode {
 	public:
-		VALUE_TYPE codegen(LLVMTypeRef type);
+		VALUE_TYPE codegen(bool isGlobalContext, LLVMTypeRef type);
 
 		PointerNode() {
 			type = "";
@@ -126,7 +126,7 @@ class PointerNode : public treeNode {
 
 class ArrayNode : public treeNode {
 	public:
-		VALUE_TYPE codegen(LLVMTypeRef type);
+		VALUE_TYPE codegen(bool isGlobalContext, LLVMTypeRef type);
 
 		ArrayNode() {
 			type = "";
@@ -149,7 +149,7 @@ class ArrayNode : public treeNode {
 
 class FunctionNode : public treeNode {
 	public:
-		FUNCTION_TYPE codegen(LLVMTypeRef type);
+		FUNCTION_TYPE codegen(bool isGlobalContext, LLVMTypeRef type);
 
 		FunctionNode() {
 			type = "";
