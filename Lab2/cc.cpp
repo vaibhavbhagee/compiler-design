@@ -79,7 +79,6 @@ main(int argc, char **argv)
   std::cout << "retv = " << !ret_val << std::endl;
 
   // LLVM IR Code generation
-  LLVMModuleRef mod = LLVMModuleCreateWithName("my_module");
   codegen(ASTree);
 
   exit(0);

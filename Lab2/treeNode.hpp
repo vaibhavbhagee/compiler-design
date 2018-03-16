@@ -80,7 +80,7 @@ class InitDeclNode : public treeNode {
 
 class VariableNode : public treeNode {
 	public:
-		VALUE_TYPE codegen() override;
+		VALUE_TYPE codegen(LLVMTypeRef type);
 
 		VariableNode() {
 			type = "";
@@ -103,7 +103,7 @@ class VariableNode : public treeNode {
 
 class PointerNode : public treeNode {
 	public:
-		VALUE_TYPE codegen() override;
+		VALUE_TYPE codegen(LLVMTypeRef type);
 
 		PointerNode() {
 			type = "";
@@ -126,7 +126,7 @@ class PointerNode : public treeNode {
 
 class ArrayNode : public treeNode {
 	public:
-		VALUE_TYPE codegen() override;
+		VALUE_TYPE codegen(LLVMTypeRef type);
 
 		ArrayNode() {
 			type = "";
@@ -149,7 +149,7 @@ class ArrayNode : public treeNode {
 
 class FunctionNode : public treeNode {
 	public:
-		FUNCTION_TYPE code_generate();
+		FUNCTION_TYPE codegen(LLVMTypeRef type);
 
 		FunctionNode() {
 			type = "";
