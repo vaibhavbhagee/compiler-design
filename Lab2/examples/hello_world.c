@@ -4,16 +4,18 @@ int a[4], b[10];
 float f1, **f2, f3;
 // int add(int a, int b);
 
-int main(int a, int b);
-// int main(void)
-// {
-//   // int a, b, c;
-//   // int** d;
-//   // printf(d, b, c);
+int main1(int a, int b);
+int main(void);
 
-// 	f1 = 0;
-// 	return 0;
-// }
+int main(void)
+{
+  // int a, b, c;
+  // int** d;
+  // printf(d, b, c);
+
+	f1 = 0.0;
+	return 0;
+}
 
 // void printf(int **a, int d, int c)
 // {

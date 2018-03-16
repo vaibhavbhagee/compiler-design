@@ -27,6 +27,7 @@
 
 #define VALUE_TYPE LLVMValueRef
 #define FUNCTION_TYPE LLVMValueRef
+#define BLOCK_TYPE LLVMBasicBlockRef
 
 // using namespace llvm;
 

@@ -115,9 +115,8 @@ VALUE_TYPE ArrayNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 	{
 		std::string varName = ((IdentNode*)children[0])->name;
 		int arrayLen= ((ConstNode*)children[1])->ival;
-		LLVMTypeRef arrayType = LLVMArrayType(type, arrayLen); // TODO: See about context
+		LLVMTypeRef arrayType = LLVMArrayType(type, arrayLen);
 
-		// TODO: Look at the third parameter
 		LLVMValueRef allocate = LLVMAddGlobal(mod, arrayType, varName.c_str());
 
 		symTable.top()[varName] = allocate;
@@ -189,6 +188,11 @@ FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 
 	std::string childType = children[1]->type;
 
+	std::map<std::string, FUNCTION_TYPE> topmostSymbolTable = funcSymTable.top();
+
+	if (topmostSymbolTable.find(funcName) != topmostSymbolTable.end())
+		return topmostSymbolTable[funcName];
+
 	if (childType == "VOID") {
 		// Return a function with no params
 		LLVMTypeRef param_types[] = {};
@@ -219,6 +223,26 @@ FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 	    return funcDecl;
 	}
 }
+
+// VALUE_TYPE BlockNode::codegen(LLVMTypeRef type, int numCorrespondingToBlockGen) {
+// 	// Push a new context and builder, create a basic block ref
+
+// 	LLVMContextRef newContext = LLVMContextCreate();
+// 	LLVMBuilderRef newBuilder = LLVMCreateBuilderInContext(newContext);
+// 	std::map<std::string, VALUE_TYPE> newVariableMap;
+
+// 	contextStack.push(newContext);
+// 	builderStack.push(newBuilder);
+// 	symTable.push(newVariableMap);
+	
+// 	switch(numCorrespondingToBlockGen) {
+// 		case 0:
+// 			break;
+// 		case 1:
+// 			break;
+// 	}
+// 	LLVMBasicBlockRef entry = LLVMAppendBasicBlock(sum, "entry");
+// }
 
 void codegen(treeNode* AST) {
 	LLVMContextRef globalContext = LLVMGetGlobalContext();

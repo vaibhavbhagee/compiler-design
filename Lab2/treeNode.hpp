@@ -170,6 +170,62 @@ class FunctionNode : public treeNode {
 		}
 };
 
+class FuncBlockNode : public treeNode {
+	public:
+		VALUE_TYPE codegen(LLVMTypeRef retType, LLVMValueRef funcHeader);
+
+		FuncBlockNode() {
+			type = "";
+		}
+
+		FuncBlockNode(std::string n) {
+			type = n;
+		}
+
+		FuncBlockNode(FuncBlockNode &t) {
+			type = t.type;
+			children = t.children;
+		}
+
+		FuncBlockNode(FuncBlockNode *t) {
+			type = t->type;
+			children = t->children;
+		}
+
+		FuncBlockNode(treeNode *t) {
+			type = t->type;
+			children = t->children;
+		}
+};
+
+class CondBlockNode : public treeNode {
+	public:
+		VALUE_TYPE codegen(LLVMBasicBlockRef afterDest); 
+
+		CondBlockNode() {
+			type = "";
+		}
+
+		CondBlockNode(std::string n) {
+			type = n;
+		}
+
+		CondBlockNode(CondBlockNode &t) {
+			type = t.type;
+			children = t.children;
+		}
+
+		CondBlockNode(CondBlockNode *t) {
+			type = t->type;
+			children = t->children;
+		}
+
+		CondBlockNode(treeNode *t) {
+			type = t->type;
+			children = t->children;
+		}
+};
+
 class ConstNode : public treeNode {
 	public:
 		std::string name;
