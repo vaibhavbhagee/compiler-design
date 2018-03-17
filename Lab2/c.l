@@ -178,7 +178,7 @@ static void comment(void)
             if (c == 0)
                 break;
         }
-    yyerror("unterminated comment");
+    yyerror("Unterminated Comment");
 }
 
 static int check_type(void)

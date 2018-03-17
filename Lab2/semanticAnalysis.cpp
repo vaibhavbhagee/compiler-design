@@ -100,6 +100,7 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 			}
 			else {
 				// TODO - Overloading
+				std::cout << "The function " << fname << " has a mismatched arguments in declaration and definition" << std::endl;
 				return false;
 			}
 		}
@@ -150,6 +151,7 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 		if (!chk) {
 			auto it = functions.find(name);
 			if (it == functions.end()) { // not declared
+				std::cout << name << " has not been declared" << std::endl;
 				return false;
 			}
 			else {	//check no. of arguments
@@ -159,6 +161,7 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 						return checkDeclUse(node->children[0], curr_type, scopes, functions);
 					}
 				}
+				std::cout << name << " has been called with incorrect number of arguments" << std::endl;
 				return false;
 			}
 		}
@@ -229,6 +232,7 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 				return (it->second).back();
 			}
 			else {
+				std::cout << name << " has been called with incorrect argument types" << std::endl;
 				return "";
 			}
 		}
@@ -269,6 +273,7 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 			return "VOID";
 		}
 		else {
+			std::cout << "Incorrectly assigned type to " << ((IdentNode*)(node->children[0]))->name << std::endl;
 			return "";
 		}
 	}
@@ -345,7 +350,7 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 			}
 			if (type == "BLOCK" && child->type == "RETURN") {
 				if (i == node->children.size() - 1) { // return is last in block
-					if (curr_type == typ) {	// return type matches function def
+					if (curr_type == typ) {			  // return type matches function def
 						return "VOID";
 					}
 				}
@@ -362,12 +367,14 @@ bool semanticCheck(treeNode* ASTree) {
 
   	bool chk1 = checkDeclUse(ASTree, "VOID", scopes, functions);
   	if (!chk1) {
+  		std::cout << "Missing declarations before use" << std::endl;
   		return false;
   	}
   	std::cout << "Identifiers are declared before use" << std::endl;
 
   	std::string chk2 = checkType(ASTree, "VOID", scopes, functions);
   	if (chk2 == "") {
+  		std::cout << "Typing errors found" << std::endl;
   		return false;
   	}
   	std::cout << "No typing errors found" << std::endl;

@@ -398,5 +398,5 @@ argument_expression_list
 void yyerror(const char *s)
 {
 	fflush(stdout);
-	fprintf(stderr, "%s in line %d or %d\n", s, yylineno, yylineno - 1);
+	fprintf(stderr, "%s in line %d\n", s, yylineno);
 }
