@@ -5,17 +5,28 @@ float f1, **f2, f3;
 // int add(int a, int b);
 
 int main1(int a, int b);
-float** main(void);
+int main2(int a);
 
-float** main(void)
+int main2(int d, int c)
 {
   // int a, b, c;
   // int** d;
   // printf(d, b, c);
 
 	// f1 = 0.0;
-	float aa;
-	return f2;
+	int ctemp, ctemp1;
+	d = 1;
+	// ctemp = d;
+	ctemp1 = ctemp;
+	return ctemp1;
+}
+
+int main(void)
+{
+	int arg1, arg2;
+	arg1 = 0;
+	arg2 = main2(0, arg1);
+	return arg2;
 }
 
 // void printf(int **a, int d, int c)

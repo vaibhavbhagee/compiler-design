@@ -14,6 +14,8 @@ std::stack< std::map<std::string, VALUE_TYPE> > symTable;
 std::stack<LLVMContextRef> contextStack;
 std::stack<LLVMBuilderRef> builderStack;
 
+VALUE_TYPE searchInSymTable(std::string varName);
+
 LLVMModuleRef mod;
 
 LLVMTypeRef stringToLLVMType(std::string typeName, LLVMContextRef c) {
@@ -53,6 +55,10 @@ VALUE_TYPE treeNode::codegen() {
 		int index = 0;
 		for (auto child : children[1]->children[1]->children) { 
 			std::string varName = (((IdentNode*)child->children[1])->name);
+
+			// LLVMTypeRef paramType = stringToLLVMType(child->children[0]->type, contextStack.top());
+
+			// newVariableMap[varName] = LLVMBuildAlloca(newBuilder, paramType, varName.c_str());
 			newVariableMap[varName] = LLVMGetParam(funcHeader, index++);
 		}
 
@@ -67,8 +73,37 @@ VALUE_TYPE treeNode::codegen() {
 
 	    return NULL;
 	}
-	else if (type == "RETURN") {
-		return children[0]->codegen();
+	else if (type == "RETURN") { //TODO: Check if you have to led here or return as is
+		
+		LLVMValueRef rhsVal = children[0]->codegen(); //TODO: Codegen is called in a similar way
+		LLVMBuilderRef currBuilder = builderStack.top();
+
+		std::string rightType = children[0]->type;
+
+		if (rightType == "Ident") {
+			std::string identName= ((IdentNode*)children[0])->name;
+			if (searchInSymTable(identName) != NULL)
+				rhsVal = LLVMBuildLoad(currBuilder, rhsVal, "load-temp");
+		}
+
+		return rhsVal;
+	}
+	else if (type == "ASSIGN") { // TODO: Check where to load and where to return as is
+		LLVMValueRef varPlace = children[0]->codegen();
+		LLVMValueRef rhsVal = children[1]->codegen(); //TODO: Codegen is called in a similar way
+
+		LLVMBuilderRef currBuilder = builderStack.top();
+
+		std::string rightType = children[1]->type;
+
+		if (rightType == "Ident") {
+			std::string identName= ((IdentNode*)children[1])->name;
+			printf("%s\n", identName.c_str());
+			if (searchInSymTable(identName) != NULL)
+				rhsVal = LLVMBuildLoad(currBuilder, rhsVal, "load-temp");
+		}
+
+		return LLVMBuildStore(currBuilder, rhsVal, varPlace); 
 	}
 
 	return NULL;
@@ -211,7 +246,7 @@ VALUE_TYPE searchInSymTable(std::string varName) {
 
 FUNCTION_TYPE searchInFuncSymTable(std::string varName) {
 
-	std::map< std::string, FUNCTION_TYPE> topContext = symTable.top();
+	std::map< std::string, FUNCTION_TYPE> topContext = funcSymTable.top();
 
 	if (topContext.find(varName) != topContext.end())
 		return topContext[varName];
@@ -222,6 +257,7 @@ FUNCTION_TYPE searchInFuncSymTable(std::string varName) {
 
 VALUE_TYPE IdentNode::codegen() {
 	std::string identName = name;
+	LLVMBuilderRef currBuilder = builderStack.top();
 
 	// Search in variable sym table
 	VALUE_TYPE foundVal = searchInSymTable(identName);
@@ -243,18 +279,16 @@ VALUE_TYPE IdentNode::codegen() {
 				// Func takes no args
 
 				LLVMValueRef *temp;
-				LLVMBuilderRef currBuilder = builderStack.top();
 				return LLVMBuildCall(currBuilder, foundInFunc, temp, 0, "ident_ret");
 			} else {
 				// Function takes args
 
 				std::vector<LLVMValueRef> codeForIdents;
 
-				for(auto child: children[0]->children) {
+				for(auto child: children[0]->children) { // TODO: ADD LOAD RELATED INFO HERE AS WELL
 					codeForIdents.push_back(child->codegen());
 				}
 
-				LLVMBuilderRef currBuilder = builderStack.top();
 				return LLVMBuildCall(currBuilder, foundInFunc, codeForIdents.data(), codeForIdents.size(), "ident_ret");
 			}
 		}
@@ -277,7 +311,6 @@ VALUE_TYPE ConstNode::codegen() {
 	else { // String constants
 		return LLVMConstStringInContext(contextStack.top(), sval.c_str(), sval.length(), false);
 	}
-
 }
 
 FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
@@ -340,8 +373,12 @@ VALUE_TYPE FuncBlockNode::codegen(LLVMTypeRef retType, LLVMValueRef funcHeader) 
 		}
 		else {
 			// TODO: Write code for all statements here
-			if (children[i]->type == "decl") {
+			if (childType == "decl") {
 				((DeclNode*)children[i])->codegen(false);
+			}
+			else if (childType == "ASSIGN")
+			{
+				(children[i]->codegen());
 			}
 		}
 	}
