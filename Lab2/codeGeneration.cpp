@@ -9,6 +9,9 @@
  *
  */
 
+// global module
+LLVMModuleRef mod;
+
 // symbol tables - function names, function args, local/global variables
 std::stack< std::map<std::string, FUNCTION_TYPE> > funcSymTable;
 std::stack< std::map<std::string, VALUE_TYPE> > argSymTable;
@@ -55,9 +58,6 @@ FUNCTION_TYPE searchInFuncSymTable(std::string varName, std::stack< std::map<std
 	}
 }
 
-
-LLVMModuleRef mod;
-
 LLVMTypeRef stringToLLVMType(std::string typeName, LLVMContextRef c) {
 	if (typeName == "INT") return LLVMInt32TypeInContext(c);
 	else if (typeName == "FLOAT") return LLVMFloatTypeInContext(c);
@@ -66,24 +66,42 @@ LLVMTypeRef stringToLLVMType(std::string typeName, LLVMContextRef c) {
 	else return NULL;
 }
 
+VALUE_TYPE loadValueifNeeded(treeNode* node, VALUE_TYPE prev_val) {
+
+	LLVMBuilderRef currBuilder = builderStack.top();
+
+	// check for node variable and load accordingly
+	if (node->type == "Ident" && node->children.size() == 0) {
+
+		std::string varName = ((IdentNode*)(node))->name;
+
+		// Search in variable sym table
+		VALUE_TYPE foundVal = searchInTable(varName, symTable);
+		if (foundVal != NULL) {	// Found in variable sym table
+			std::string tag = "load_" + varName + "_";
+			return LLVMBuildLoad(currBuilder, prev_val, tag.c_str());
+		}
+	}
+	return prev_val;
+}
 
 VALUE_TYPE codegenBinExp(treeNode* lhs, treeNode* rhs, LLVMOpcode Op, bool logical=false) {
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 
 	LLVMValueRef lhsVal = lhs->codegen();
+	lhsVal = loadValueifNeeded(lhs, lhsVal);
+	
 	LLVMValueRef rhsVal = rhs->codegen();
+	rhsVal = loadValueifNeeded(rhs, rhsVal);
 
-	// printf("%d %d\n",LLVMGetTypeKind(LLVMTypeOf(lhsVal)) == LLVMIntegerTypeKind,
-	//   LLVMGetTypeKind(LLVMTypeOf(rhsVal)) == LLVMIntegerTypeKind);
+	if (LLVMGetTypeKind(LLVMTypeOf(lhsVal)) == LLVMFloatTypeKind &&
+	 LLVMGetTypeKind(LLVMTypeOf(rhsVal)) == LLVMFloatTypeKind && !logical){
 
-	if ((LLVMGetTypeKind(LLVMTypeOf(lhsVal)) == LLVMIntegerTypeKind &&
-	 LLVMGetTypeKind(LLVMTypeOf(rhsVal)) == LLVMIntegerTypeKind) || logical) {
-
-		return LLVMBuildBinOp(currBuilder, Op, lhsVal, rhsVal, "int_op");
+		return LLVMBuildBinOp(currBuilder, ((LLVMOpcode)(Op + 1)), lhsVal, rhsVal, "flt_op");
 	}
 	else {
-		return LLVMBuildBinOp(currBuilder, ((LLVMOpcode)(Op + 1)), lhsVal, rhsVal, "flt_op");
+		return LLVMBuildBinOp(currBuilder, Op, lhsVal, rhsVal, "int_op");
 	}
 }
 
@@ -93,15 +111,18 @@ VALUE_TYPE codegenCondExp(treeNode* lhs, treeNode* rhs, int Op, bool logical=fal
 	LLVMBuilderRef currBuilder = builderStack.top();
 
 	LLVMValueRef lhsVal = lhs->codegen();
+	lhsVal = loadValueifNeeded(lhs, lhsVal);
+	
 	LLVMValueRef rhsVal = rhs->codegen();
+	rhsVal = loadValueifNeeded(rhs, rhsVal);
 
-	if ((LLVMGetTypeKind(LLVMTypeOf(lhsVal)) == LLVMIntegerTypeKind &&
-	 LLVMGetTypeKind(LLVMTypeOf(rhsVal)) == LLVMIntegerTypeKind) || logical) {
+	if (LLVMGetTypeKind(LLVMTypeOf(lhsVal)) == LLVMFloatTypeKind &&
+	 LLVMGetTypeKind(LLVMTypeOf(rhsVal)) == LLVMFloatTypeKind && !logical){
 
-		return LLVMBuildICmp(currBuilder, toIntPred[Op], lhsVal, rhsVal, "int_cmp");
-	}
-	else {
 		return LLVMBuildFCmp(currBuilder, toRealPred[Op], lhsVal, rhsVal, "flt_cmp");
+	}
+	else{
+		return LLVMBuildICmp(currBuilder, toIntPred[Op], lhsVal, rhsVal, "int_cmp");
 	}
 }
 
@@ -153,32 +174,14 @@ VALUE_TYPE treeNode::codegen() {
 	else if (type == "RETURN") { //TODO: Check if you have to led here or return as is
 		
 		LLVMValueRef rhsVal = children[0]->codegen(); //TODO: Codegen is called in a similar way
-
-		std::string rightType = children[0]->type;
-
-		if (rightType == "Ident") {
-			std::string identName = ((IdentNode*)children[0])->name;
-
-			if (searchInTable(identName, symTable) != NULL){// is a local/global variable
-				rhsVal = LLVMBuildLoad(currBuilder, rhsVal, "load-temp");
-			}
-		}
+		rhsVal = loadValueifNeeded(children[0], rhsVal);
 
 		return rhsVal;
 	}
 	else if (type == "ASSIGN") { // TODO: Check where to load and where to return as is
 		LLVMValueRef varPlace = children[0]->codegen();
 		LLVMValueRef rhsVal = children[1]->codegen(); //TODO: Codegen is called in a similar way
-
-		std::string rightType = children[1]->type;
-
-		if (rightType == "Ident") {
-			std::string identName = ((IdentNode*)children[1])->name;
-
-			if (searchInTable(identName, symTable) != NULL){
-				rhsVal = LLVMBuildLoad(currBuilder, rhsVal, "load-temp");
-			}
-		}
+		rhsVal = loadValueifNeeded(children[1], rhsVal);
 
 		return LLVMBuildStore(currBuilder, rhsVal, varPlace); 
 	}
@@ -385,8 +388,11 @@ VALUE_TYPE IdentNode::codegen() {
 				// Func takes no args
 
 				LLVMValueRef *temp;
-				return LLVMBuildCall(currBuilder, foundInFunc, temp, 0, "ident_ret");
-			} else {
+
+				std::string tag = identName + "_ret_";
+				return LLVMBuildCall(currBuilder, foundInFunc, temp, 0, tag.c_str());
+			} 
+			else {
 				// Function takes args
 
 				std::vector<LLVMValueRef> codeForIdents;
@@ -394,13 +400,7 @@ VALUE_TYPE IdentNode::codegen() {
 				for(auto child: children[0]->children) { // TODO: ADD LOAD RELATED INFO HERE AS WELL
 					LLVMValueRef generated_code = child->codegen();
 
-					if (child->children.size() == 0) { // No more children => a variable
-						std::string varName = ((IdentNode*)(child))->name;
-						VALUE_TYPE foundVal = searchInTable(varName, symTable);
-						if (foundVal != NULL) {
-							generated_code = LLVMBuildLoad(currBuilder, generated_code, "load-temp");
-						}
-					}
+					generated_code = loadValueifNeeded(child, generated_code);
 					codeForIdents.push_back(generated_code);
 				}
 

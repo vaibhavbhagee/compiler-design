@@ -4,10 +4,10 @@
 // float f1, **f2, f3;
 // int add(int a, int b);
 
-int main1(int a, int b);
+int** main1(int a, int b);
 // int main2(int a);
 
-float main2(int d, int c)
+int main2(int d, int c)
 {
   // int a, b, c;
   // int** d;
@@ -21,14 +21,13 @@ float main2(int d, int c)
 
 	int c;
 	c = 0;
-	d = c + d;
+	d = d + c + d;
 	c++;
 	d++;
 	c + 1;
-	c == d;
 	d != 1;
 
-	return ctemp1;
+	return c;
 }
 
 // int main(void)
