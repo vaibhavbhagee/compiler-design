@@ -10,11 +10,44 @@
  */
 
 std::stack< std::map<std::string, FUNCTION_TYPE> > funcSymTable;
+std::stack< std::map<std::string, VALUE_TYPE> > argSymTable;
 std::stack< std::map<std::string, VALUE_TYPE> > symTable;
 std::stack<LLVMContextRef> contextStack;
 std::stack<LLVMBuilderRef> builderStack;
 
-VALUE_TYPE searchInSymTable(std::string varName);
+VALUE_TYPE searchInTable(std::string varName, 
+	std::stack< std::map<std::string, VALUE_TYPE> > &symTable, bool stopFirst=false) {
+
+	if (symTable.empty())
+		return NULL;
+
+	std::map< std::string, VALUE_TYPE> topContext = symTable.top();
+
+	if (topContext.find(varName) != topContext.end())
+		return topContext[varName];
+	else {
+		if (stopFirst) {
+			return NULL;
+		}
+
+		symTable.pop();
+		VALUE_TYPE found = searchInTable(varName, symTable);
+		symTable.push(topContext);
+		return found;
+	}
+}
+
+FUNCTION_TYPE searchInFuncSymTable(std::string varName, std::stack< std::map<std::string, VALUE_TYPE> > &funcSymTable) {
+
+	std::map< std::string, FUNCTION_TYPE> topContext = funcSymTable.top();
+
+	if (topContext.find(varName) != topContext.end())
+		return topContext[varName];
+	else {
+		return NULL;
+	}
+}
+
 
 LLVMModuleRef mod;
 
@@ -62,14 +95,14 @@ VALUE_TYPE treeNode::codegen() {
 			newVariableMap[varName] = LLVMGetParam(funcHeader, index++);
 		}
 
-		symTable.push(newVariableMap);
+		argSymTable.push(newVariableMap);
 
 		LLVMBasicBlockRef entry = LLVMAppendBasicBlock(funcHeader, "entry");
 		LLVMPositionBuilderAtEnd(newBuilder, entry);
 
 		((FuncBlockNode*)children[2])->codegen( funcRetType, funcHeader );
 
-		symTable.pop();
+		argSymTable.pop();
 
 	    return NULL;
 	}
@@ -81,9 +114,12 @@ VALUE_TYPE treeNode::codegen() {
 		std::string rightType = children[0]->type;
 
 		if (rightType == "Ident") {
-			std::string identName= ((IdentNode*)children[0])->name;
-			if (searchInSymTable(identName) != NULL)
+			std::string identName = ((IdentNode*)children[0])->name;
+
+			if (searchInTable(identName, symTable) != NULL){
+				// is a local/global variable
 				rhsVal = LLVMBuildLoad(currBuilder, rhsVal, "load-temp");
+			}
 		}
 
 		return rhsVal;
@@ -97,10 +133,11 @@ VALUE_TYPE treeNode::codegen() {
 		std::string rightType = children[1]->type;
 
 		if (rightType == "Ident") {
-			std::string identName= ((IdentNode*)children[1])->name;
-			printf("%s\n", identName.c_str());
-			if (searchInSymTable(identName) != NULL)
+			std::string identName = ((IdentNode*)children[1])->name;
+			// printf("%s\n", identName.c_str());
+			if (searchInTable(identName, symTable) != NULL){
 				rhsVal = LLVMBuildLoad(currBuilder, rhsVal, "load-temp");
+			}
 		}
 
 		return LLVMBuildStore(currBuilder, rhsVal, varPlace); 
@@ -221,38 +258,6 @@ VALUE_TYPE PointerNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 
 		return ((FunctionNode*)children[0])->codegen(isGlobalContext, pointerType);
 	}
-
-}
-
-VALUE_TYPE searchInSymTable(std::string varName) {
-
-	if (symTable.empty())
-		return NULL;
-
-	std::map< std::string, VALUE_TYPE> topContext = symTable.top();
-
-	if (topContext.find(varName) != topContext.end())
-		return topContext[varName];
-	else {
-		symTable.pop();
-
-		VALUE_TYPE found = searchInSymTable(varName);
-
-		symTable.push(topContext);
-
-		return found;
-	}
-}
-
-FUNCTION_TYPE searchInFuncSymTable(std::string varName) {
-
-	std::map< std::string, FUNCTION_TYPE> topContext = funcSymTable.top();
-
-	if (topContext.find(varName) != topContext.end())
-		return topContext[varName];
-	else {
-		return NULL;
-	}
 }
 
 VALUE_TYPE IdentNode::codegen() {
@@ -260,17 +265,22 @@ VALUE_TYPE IdentNode::codegen() {
 	LLVMBuilderRef currBuilder = builderStack.top();
 
 	// Search in variable sym table
-	VALUE_TYPE foundVal = searchInSymTable(identName);
+	VALUE_TYPE foundVal = searchInTable(identName, symTable);
 
-	if (foundVal != NULL) {
-		// Found in variable sym table
+	if (foundVal != NULL) {	// Found in variable sym table
+		return foundVal;
+	}
 
+	// Search in function args - only the first level
+	foundVal = searchInTable(identName, argSymTable, true);
+
+	if (foundVal != NULL) {	// its a function argument
 		return foundVal;
 	}
 	else {
 		// check in func sym table
 
-		VALUE_TYPE foundInFunc = searchInFuncSymTable(identName);
+		VALUE_TYPE foundInFunc = searchInFuncSymTable(identName, funcSymTable);
 
 		if (foundInFunc != NULL) {
 			// Iterate over all the children
@@ -286,7 +296,16 @@ VALUE_TYPE IdentNode::codegen() {
 				std::vector<LLVMValueRef> codeForIdents;
 
 				for(auto child: children[0]->children) { // TODO: ADD LOAD RELATED INFO HERE AS WELL
-					codeForIdents.push_back(child->codegen());
+					LLVMValueRef generated_code = child->codegen();
+
+					if (child->children.size() == 0) { // No more children => a variable
+						std::string varName = ((IdentNode*)(child))->name;
+						VALUE_TYPE foundVal = searchInTable(varName, symTable);
+						if (foundVal != NULL) {
+							generated_code = LLVMBuildLoad(currBuilder, generated_code, "load-temp");
+						}
+					}
+					codeForIdents.push_back(generated_code);
 				}
 
 				return LLVMBuildCall(currBuilder, foundInFunc, codeForIdents.data(), codeForIdents.size(), "ident_ret");
@@ -417,11 +436,13 @@ void codegen(treeNode* AST) {
 	LLVMContextRef globalContext = LLVMGetGlobalContext();
 	LLVMBuilderRef globalBuilder = LLVMCreateBuilderInContext(globalContext);
 	std::map<std::string, VALUE_TYPE> variableMap;
+	std::map<std::string, VALUE_TYPE> argsMap;
 	std::map<std::string, FUNCTION_TYPE> functionMap;
 
 	contextStack.push(globalContext);
 	builderStack.push(globalBuilder);
 	symTable.push(variableMap);
+	argSymTable.push(argsMap);
 	funcSymTable.push(functionMap);
 
 	mod = LLVMModuleCreateWithNameInContext("my_module", globalContext);
@@ -459,6 +480,7 @@ void codegen(treeNode* AST) {
 	contextStack.pop();
 	builderStack.pop();
 	symTable.pop();
+	argSymTable.pop();
 	funcSymTable.pop();
 
     LLVMDisposeBuilder(globalBuilder);

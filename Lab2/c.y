@@ -211,7 +211,7 @@ parameter_list
 												}
 	;
 
-parameter_declaration							/*TODO: Identifier added here, check if actually required*/
+parameter_declaration							
 	: type_specifier IDENTIFIER					{treeNode *temp = new treeNode("param_decl"); temp->children.push_back($1); temp->children.push_back(new IdentNode($2)); $$ = temp;}
 	| type_specifier pointer IDENTIFIER 		{
 													treeNode *temp = new treeNode("param_decl");

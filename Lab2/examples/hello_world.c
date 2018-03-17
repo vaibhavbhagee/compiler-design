@@ -5,7 +5,7 @@ float f1, **f2, f3;
 // int add(int a, int b);
 
 int main1(int a, int b);
-int main2(int a);
+// int main2(int a);
 
 int main2(int d, int c)
 {

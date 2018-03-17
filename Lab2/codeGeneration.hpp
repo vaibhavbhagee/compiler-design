@@ -11,7 +11,6 @@
 // static LLVMContext TheContext;
 extern LLVMModuleRef mod;
 extern LLVMBuilderRef builder;
-// static std::map<std::string, Value *> NamedValues;
 extern std::stack< std::map<std::string, FUNCTION_TYPE> > funcSymTable;
 extern std::stack< std::map<std::string, VALUE_TYPE> > symTable;
 extern std::stack< LLVMContextRef > contextStack;
