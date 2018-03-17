@@ -25,10 +25,9 @@ float main2(int d, int c)
 	c++;
 	d++;
 	c + 1;
-	// int ctemp, ctemp1;
-	// d = 1;
-	// ctemp = d;
-	// ctemp1 = ctemp;
+	c == d;
+	d != 1;
+
 	return ctemp1;
 }
 

@@ -9,11 +9,19 @@
  *
  */
 
+// symbol tables - function names, function args, local/global variables
 std::stack< std::map<std::string, FUNCTION_TYPE> > funcSymTable;
 std::stack< std::map<std::string, VALUE_TYPE> > argSymTable;
 std::stack< std::map<std::string, VALUE_TYPE> > symTable;
+
+// stack of contexts/builders - operate in concert
 std::stack<LLVMContextRef> contextStack;
 std::stack<LLVMBuilderRef> builderStack;
+
+// conditional operators
+LLVMIntPredicate toIntPred[6] = {LLVMIntEQ, LLVMIntNE, LLVMIntSGT, LLVMIntSLT, LLVMIntSGE, LLVMIntSLE};
+LLVMRealPredicate toRealPred[6] = {LLVMRealOEQ, LLVMRealONE, LLVMRealOGT, LLVMRealOLT, LLVMRealOGE, LLVMRealOLE};
+
 
 VALUE_TYPE searchInTable(std::string varName, 
 	std::stack< std::map<std::string, VALUE_TYPE> > &symTable, bool stopFirst=false) {
@@ -29,7 +37,6 @@ VALUE_TYPE searchInTable(std::string varName,
 		if (stopFirst) {
 			return NULL;
 		}
-
 		symTable.pop();
 		VALUE_TYPE found = searchInTable(varName, symTable);
 		symTable.push(topContext);
@@ -67,12 +74,34 @@ VALUE_TYPE codegenBinExp(treeNode* lhs, treeNode* rhs, LLVMOpcode Op, bool logic
 	LLVMValueRef lhsVal = lhs->codegen();
 	LLVMValueRef rhsVal = rhs->codegen();
 
+	// printf("%d %d\n",LLVMGetTypeKind(LLVMTypeOf(lhsVal)) == LLVMIntegerTypeKind,
+	//   LLVMGetTypeKind(LLVMTypeOf(rhsVal)) == LLVMIntegerTypeKind);
+
 	if ((LLVMGetTypeKind(LLVMTypeOf(lhsVal)) == LLVMIntegerTypeKind &&
 	 LLVMGetTypeKind(LLVMTypeOf(rhsVal)) == LLVMIntegerTypeKind) || logical) {
+
 		return LLVMBuildBinOp(currBuilder, Op, lhsVal, rhsVal, "int_op");
 	}
 	else {
 		return LLVMBuildBinOp(currBuilder, ((LLVMOpcode)(Op + 1)), lhsVal, rhsVal, "flt_op");
+	}
+}
+
+
+VALUE_TYPE codegenCondExp(treeNode* lhs, treeNode* rhs, int Op, bool logical=false) {
+
+	LLVMBuilderRef currBuilder = builderStack.top();
+
+	LLVMValueRef lhsVal = lhs->codegen();
+	LLVMValueRef rhsVal = rhs->codegen();
+
+	if ((LLVMGetTypeKind(LLVMTypeOf(lhsVal)) == LLVMIntegerTypeKind &&
+	 LLVMGetTypeKind(LLVMTypeOf(rhsVal)) == LLVMIntegerTypeKind) || logical) {
+
+		return LLVMBuildICmp(currBuilder, toIntPred[Op], lhsVal, rhsVal, "int_cmp");
+	}
+	else {
+		return LLVMBuildFCmp(currBuilder, toRealPred[Op], lhsVal, rhsVal, "flt_cmp");
 	}
 }
 
@@ -178,6 +207,27 @@ VALUE_TYPE treeNode::codegen() {
 	else if (type == "XOR") {
 		return codegenBinExp(children[0], children[1], LLVMXor, true);
 	}
+
+	// condition operators
+	else if (type == "EQ") {
+		return codegenCondExp(children[0], children[1], 0);
+	}
+	else if (type == "NEQ") {
+		return codegenCondExp(children[0], children[1], 1);
+	}
+	else if (type == "GT") {
+		return codegenCondExp(children[0], children[1], 2);
+	}
+	else if (type == "LT") {
+		return codegenCondExp(children[0], children[1], 3);
+	}
+	else if (type == "GTE") {
+		return codegenCondExp(children[0], children[1], 4);
+	}
+	else if (type == "LTE") {
+		return codegenCondExp(children[0], children[1], 5);
+	}
+
 	// unary operators
 	else if (type == "INC") {
 		ConstNode* temp = new ConstNode(1);
