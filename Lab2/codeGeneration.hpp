@@ -8,7 +8,6 @@
 #include "llvmHeaders.hpp"
 #include "treeNode.hpp"
 
-// static LLVMContext TheContext;
 extern LLVMModuleRef mod;
 extern LLVMBuilderRef builder;
 extern std::stack< std::map<std::string, FUNCTION_TYPE> > funcSymTable;

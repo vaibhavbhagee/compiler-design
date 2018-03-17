@@ -1,10 +1,10 @@
 #include "semanticAnalysis.hpp"
 
-std::vector<std::string> getFuncDeclParams(treeNode* func_node, std::string type) {
+std::vector<std::string> getFuncDeclParams(treeNode* function_node, std::string type) {
 	std::vector<std::string> fparams;
 
 	//iterate over params - each param_decl
-	for (auto child : func_node->children[1]->children) { 
+	for (auto child : function_node->children[1]->children) { 
 		fparams.push_back(child->children[0]->type);
 	}
 
@@ -99,7 +99,7 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 				return true;
 			}
 			else {
-				// TODO - Overloading
+				std::cout << "The function " << fname << " has a mismatched arguments in declaration and definition" << std::endl;
 				return false;
 			}
 		}
@@ -150,6 +150,7 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 		if (!chk) {
 			auto it = functions.find(name);
 			if (it == functions.end()) { // not declared
+				std::cout << name << " has not been declared" << std::endl;
 				return false;
 			}
 			else {	//check no. of arguments
@@ -159,6 +160,7 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 						return checkDeclUse(node->children[0], curr_type, scopes, functions);
 					}
 				}
+				std::cout << name << " has been called with incorrect number of arguments" << std::endl;
 				return false;
 			}
 		}
@@ -229,6 +231,7 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 				return (it->second).back();
 			}
 			else {
+				std::cout << name << " has been called with incorrect argument types" << std::endl;
 				return "";
 			}
 		}
@@ -265,10 +268,11 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		if (lhs == rhs) {
 			return "VOID";
 		}
-		else if (lhs.find("INT") == 0 && rhs == "INT") { //pointer assigned INT
+		else if (lhs.find("INT") == 0 && rhs == "INT") { // pointer assigned INT
 			return "VOID";
 		}
 		else {
+			std::cout << "Incorrectly assigned type to " << ((IdentNode*)(node->children[0]))->name << std::endl;
 			return "";
 		}
 	}
@@ -310,6 +314,11 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		std::string rhs = checkType(node->children[1], curr_type, scopes, functions);
 		return (lhs == rhs)?"BOOL":"";
 	}
+	else if (type == "LT" || type == "GT" || type == "LTE" || type == "GTE" ) {
+		std::string lhs = checkType(node->children[0], curr_type, scopes, functions);
+		std::string rhs = checkType(node->children[1], curr_type, scopes, functions);
+		return (lhs == rhs)?"BOOL":"";
+	}
 	else if (type == "NOT") {
 		std::string lhs = checkType(node->children[0], curr_type, scopes, functions);
 		return (lhs == "INT" | lhs == "BOOL")?"BOOL":"";
@@ -340,7 +349,7 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 			}
 			if (type == "BLOCK" && child->type == "RETURN") {
 				if (i == node->children.size() - 1) { // return is last in block
-					if (curr_type == typ) {	// return type matches function def
+					if (curr_type == typ) {			  // return type matches function def
 						return "VOID";
 					}
 				}
@@ -357,12 +366,14 @@ bool semanticCheck(treeNode* ASTree) {
 
   	bool chk1 = checkDeclUse(ASTree, "VOID", scopes, functions);
   	if (!chk1) {
+  		std::cout << "Missing declarations before use" << std::endl;
   		return false;
   	}
   	std::cout << "Identifiers are declared before use" << std::endl;
 
   	std::string chk2 = checkType(ASTree, "VOID", scopes, functions);
   	if (chk2 == "") {
+  		std::cout << "Typing errors found" << std::endl;
   		return false;
   	}
   	std::cout << "No typing errors found" << std::endl;

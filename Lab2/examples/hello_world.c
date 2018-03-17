@@ -32,6 +32,7 @@ int main(void)
 // void printf(int **a, int d, int c)
 // {
 // 	b[1] = 5;
+
 // 	c = 1;
 // 	if (c+1 == 2 || c - 1 == 0)
 // 	{
