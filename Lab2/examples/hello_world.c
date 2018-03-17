@@ -1,33 +1,45 @@
 // void printf(int **x, int y, int z);
 // int*** scanf(void);
-int a[4], b[10];
-float f1, **f2, f3;
+// int a[4], b[10];
+// float f1, **f2, f3;
 // int add(int a, int b);
 
 int main1(int a, int b);
 // int main2(int a);
 
-int main2(int d, int c)
+float main2(int d, int c)
 {
   // int a, b, c;
   // int** d;
   // printf(d, b, c);
 
-	// f1 = 0.0;
-	int ctemp, ctemp1;
-	d = 1;
+	float ctemp1, ctemp2;
+	ctemp1 = 1.0 + ctemp2;
+	ctemp2 = ctemp1 * ctemp1;
+	ctemp1 = ctemp1 - 5.0;
+	ctemp1 = ctemp2 / ctemp1;
+
+	int c;
+	c = 0;
+	d = c + d;
+	c++;
+	d++;
+	c + 1;
+	// int ctemp, ctemp1;
+	// d = 1;
 	// ctemp = d;
-	ctemp1 = ctemp;
+	// ctemp1 = ctemp;
 	return ctemp1;
 }
 
-int main(void)
-{
-	int arg1, arg2;
-	arg1 = 0;
-	arg2 = main2(0, arg1);
-	return arg2;
-}
+// int main(void)
+// {
+// 	int arg1;
+// 	float arg2;
+// 	arg1 = 0;
+// 	arg2 = main2(0, arg1);
+// 	return arg1;
+// }
 
 // void printf(int **a, int d, int c)
 // {

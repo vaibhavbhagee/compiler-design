@@ -59,7 +59,28 @@ LLVMTypeRef stringToLLVMType(std::string typeName, LLVMContextRef c) {
 	else return NULL;
 }
 
+
+VALUE_TYPE codegenBinExp(treeNode* lhs, treeNode* rhs, LLVMOpcode Op, bool logical=false) {
+
+	LLVMBuilderRef currBuilder = builderStack.top();
+
+	LLVMValueRef lhsVal = lhs->codegen();
+	LLVMValueRef rhsVal = rhs->codegen();
+
+	if ((LLVMGetTypeKind(LLVMTypeOf(lhsVal)) == LLVMIntegerTypeKind &&
+	 LLVMGetTypeKind(LLVMTypeOf(rhsVal)) == LLVMIntegerTypeKind) || logical) {
+		return LLVMBuildBinOp(currBuilder, Op, lhsVal, rhsVal, "int_op");
+	}
+	else {
+		return LLVMBuildBinOp(currBuilder, ((LLVMOpcode)(Op + 1)), lhsVal, rhsVal, "flt_op");
+	}
+}
+
+
 VALUE_TYPE treeNode::codegen() {
+
+	LLVMContextRef currContext = contextStack.top();
+	LLVMBuilderRef currBuilder = builderStack.top();
 
 	if (type == "start") {
 		
@@ -76,29 +97,23 @@ VALUE_TYPE treeNode::codegen() {
 	}
 	else if (type == "FUNC") {
 		
-		LLVMContextRef newContext = contextStack.top();
-		LLVMBuilderRef newBuilder = builderStack.top();
 		std::map<std::string, VALUE_TYPE> newVariableMap;
 
 		std::vector<std::string> fparams;
 		
-		LLVMTypeRef funcRetType = stringToLLVMType(children[0]->type, newContext);
+		LLVMTypeRef funcRetType = stringToLLVMType(children[0]->type, currContext);
 		FUNCTION_TYPE funcHeader = ((FunctionNode*)children[1])->codegen( true, funcRetType );
 
 		int index = 0;
 		for (auto child : children[1]->children[1]->children) { 
 			std::string varName = (((IdentNode*)child->children[1])->name);
-
-			// LLVMTypeRef paramType = stringToLLVMType(child->children[0]->type, contextStack.top());
-
-			// newVariableMap[varName] = LLVMBuildAlloca(newBuilder, paramType, varName.c_str());
 			newVariableMap[varName] = LLVMGetParam(funcHeader, index++);
 		}
 
 		argSymTable.push(newVariableMap);
 
 		LLVMBasicBlockRef entry = LLVMAppendBasicBlock(funcHeader, "entry");
-		LLVMPositionBuilderAtEnd(newBuilder, entry);
+		LLVMPositionBuilderAtEnd(currBuilder, entry);
 
 		((FuncBlockNode*)children[2])->codegen( funcRetType, funcHeader );
 
@@ -109,15 +124,13 @@ VALUE_TYPE treeNode::codegen() {
 	else if (type == "RETURN") { //TODO: Check if you have to led here or return as is
 		
 		LLVMValueRef rhsVal = children[0]->codegen(); //TODO: Codegen is called in a similar way
-		LLVMBuilderRef currBuilder = builderStack.top();
 
 		std::string rightType = children[0]->type;
 
 		if (rightType == "Ident") {
 			std::string identName = ((IdentNode*)children[0])->name;
 
-			if (searchInTable(identName, symTable) != NULL){
-				// is a local/global variable
+			if (searchInTable(identName, symTable) != NULL){// is a local/global variable
 				rhsVal = LLVMBuildLoad(currBuilder, rhsVal, "load-temp");
 			}
 		}
@@ -128,13 +141,11 @@ VALUE_TYPE treeNode::codegen() {
 		LLVMValueRef varPlace = children[0]->codegen();
 		LLVMValueRef rhsVal = children[1]->codegen(); //TODO: Codegen is called in a similar way
 
-		LLVMBuilderRef currBuilder = builderStack.top();
-
 		std::string rightType = children[1]->type;
 
 		if (rightType == "Ident") {
 			std::string identName = ((IdentNode*)children[1])->name;
-			// printf("%s\n", identName.c_str());
+
 			if (searchInTable(identName, symTable) != NULL){
 				rhsVal = LLVMBuildLoad(currBuilder, rhsVal, "load-temp");
 			}
@@ -142,6 +153,41 @@ VALUE_TYPE treeNode::codegen() {
 
 		return LLVMBuildStore(currBuilder, rhsVal, varPlace); 
 	}
+	// binary ops
+	else if (type == "PLUS") {
+		return codegenBinExp(children[0], children[1], LLVMAdd);
+	}
+	else if (type == "MINUS") {
+		return codegenBinExp(children[0], children[1], LLVMSub);
+	}
+	else if (type == "MULT") {
+		return codegenBinExp(children[0], children[1], LLVMMul);
+	}
+	else if (type == "DIV") {
+		return codegenBinExp(children[0], children[1], LLVMSDiv);
+	}
+	else if (type == "MOD") {
+		return codegenBinExp(children[0], children[1], LLVMSRem);
+	}
+	else if (type == "OR") {
+		return codegenBinExp(children[0], children[1], LLVMOr, true);
+	}
+	else if (type == "AND") {
+		return codegenBinExp(children[0], children[1], LLVMAnd, true);
+	}
+	else if (type == "XOR") {
+		return codegenBinExp(children[0], children[1], LLVMXor, true);
+	}
+	// unary operators
+	else if (type == "INC") {
+		ConstNode* temp = new ConstNode(1);
+		return codegenBinExp(children[0], temp, LLVMAdd, true);
+	}
+	else if (type == "DEC") {
+		ConstNode* temp = new ConstNode(1);
+		return codegenBinExp(children[0], temp, LLVMSub, true);
+	}
+
 
 	return NULL;
 }
@@ -395,9 +441,11 @@ VALUE_TYPE FuncBlockNode::codegen(LLVMTypeRef retType, LLVMValueRef funcHeader) 
 			if (childType == "decl") {
 				((DeclNode*)children[i])->codegen(false);
 			}
-			else if (childType == "ASSIGN")
-			{
-				(children[i]->codegen());
+			else if (childType == "ASSIGN") {
+				children[i]->codegen();
+			}
+			else { // binops and unary ops
+				children[i]->codegen();
 			}
 		}
 	}
@@ -447,19 +495,9 @@ void codegen(treeNode* AST) {
 
 	mod = LLVMModuleCreateWithNameInContext("my_module", globalContext);
 
-	// Trial
-	// LLVMTypeRef param_types[] = {};
-	// LLVMTypeRef ret_type = LLVMFunctionType(LLVMVoidType(), param_types, 0, 0);
-	// LLVMValueRef sum = LLVMAddFunction(mod, "sum", ret_type);
-
-	// LLVMBasicBlockRef entry = LLVMAppendBasicBlock(sum, "entry");
-	// LLVMPositionBuilderAtEnd(globalBuilder, entry);
-
 	AST->codegen();
 
-	// LLVMBuildRetVoid(globalBuilder);
-
-	FILE *f = fopen("code.txt", "w");
+	FILE *f = fopen("generated_code.txt", "w");
 	if (f == NULL)
 	{
 	    printf("Error opening file!\n");
