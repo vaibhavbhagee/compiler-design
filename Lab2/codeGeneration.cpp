@@ -224,10 +224,10 @@ VALUE_TYPE treeNode::codegen() {
 	else if (type == "LT") {
 		return codegenCondExp(children[0], children[1], 3);
 	}
-	else if (type == "GTE") {
+	else if (type == "GEQ") {
 		return codegenCondExp(children[0], children[1], 4);
 	}
-	else if (type == "LTE") {
+	else if (type == "LEQ") {
 		return codegenCondExp(children[0], children[1], 5);
 	}
 
@@ -241,6 +241,16 @@ VALUE_TYPE treeNode::codegen() {
 		return codegenBinExp(children[0], temp, LLVMSub, true);
 	}
 
+	// pointer ops
+	else if (type == "DEREF") {
+		LLVMValueRef derefVal = children[0]->codegen();
+		derefVal = loadValueifNeeded(children[0], derefVal);
+		return LLVMBuildLoad(currBuilder, derefVal, "deref");
+	}
+	else if (type == "REF") {
+		LLVMValueRef refVal = children[0]->codegen();
+		return refVal;
+	}
 
 	return NULL;
 }
