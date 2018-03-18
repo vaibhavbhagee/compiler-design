@@ -264,7 +264,7 @@ expression_statement
 
 selection_statement
 	: IF '(' expression ')' compound_statement ELSE compound_statement  								{
-																											treeNode *temp = new treeNode("ITE"); 
+																											BranchNode *temp = new BranchNode("ITE"); 
 																											treeNode *temp2 = new treeNode("CONDITION"); 
 																											temp2->children.push_back($3); 
 																											temp->children.push_back(temp2); 
@@ -277,7 +277,7 @@ selection_statement
 																											$$ = temp;
 																										}
 	| IF '(' expression ')' compound_statement 				  								{
-																								treeNode *temp = new treeNode("IF"); 
+																								BranchNode *temp = new BranchNode("IF"); 
 																								treeNode *temp2 = new treeNode("CONDITION"); 
 																								temp2->children.push_back($3);  
 																								temp->children.push_back(temp2); 
@@ -291,7 +291,7 @@ selection_statement
 
 iteration_statement
 	: WHILE '(' expression ')' compound_statement 											{
-																								treeNode *temp = new treeNode("WHILE"); 
+																								BranchNode *temp = new BranchNode("WHILE"); 
 																								treeNode *temp2 = new treeNode("CONDITION"); 
 																								temp2->children.push_back($3); 
 																								temp->children.push_back(temp2); 
@@ -302,7 +302,7 @@ iteration_statement
 																								$$ = temp;
 																							}
 	| DO compound_statement WHILE '(' expression ')' ';'										{
-																									treeNode *temp = new treeNode("DO-WHILE"); 
+																									BranchNode *temp = new BranchNode("DO-WHILE"); 
 
 																									CondBlockNode *cbn2 = new CondBlockNode($2);
 																									temp->children.push_back(cbn2); 
@@ -313,7 +313,7 @@ iteration_statement
 																									$$ = temp;
 																								}
 	| FOR '(' expression_statement expression_statement expression ')' compound_statement   {
-																								treeNode *temp = new treeNode("FOR"); 
+																								BranchNode *temp = new BranchNode("FOR"); 
 																								temp->children.push_back($3);  
 																								temp->children.push_back($4); 
 																								temp->children.push_back($5);  

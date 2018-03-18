@@ -170,6 +170,34 @@ class FunctionNode : public treeNode {
 		}
 };
 
+class BranchNode : public treeNode {
+	public:
+		VALUE_TYPE codegen(LLVMTypeRef retType);
+
+		BranchNode() {
+			type = "";
+		}
+
+		BranchNode(std::string n) {
+			type = n;
+		}
+
+		BranchNode(BranchNode &t) {
+			type = t.type;
+			children = t.children;
+		}
+
+		BranchNode(BranchNode *t) {
+			type = t->type;
+			children = t->children;
+		}
+
+		BranchNode(treeNode *t) {
+			type = t->type;
+			children = t->children;
+		}
+};
+
 class FuncBlockNode : public treeNode {
 	public:
 		VALUE_TYPE codegen(LLVMTypeRef retType, LLVMValueRef funcHeader);
