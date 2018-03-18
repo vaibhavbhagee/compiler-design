@@ -27,6 +27,29 @@ int main2(int d, int c)
 	c + 1;
 	d != 1;
 
+	for (c = 0; c < 10; c++) {
+		d++;
+	}
+
+	while (d <10) {
+		d++;
+	}
+
+	do {
+		d++;
+	} while (d < 11);
+
+	if (d < 10) {
+		d = 11;
+	}
+
+	if (d < 11) {
+		d++;
+	}
+	else {
+		d--;
+	}
+
 	return c;
 }
 

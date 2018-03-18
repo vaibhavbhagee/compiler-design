@@ -212,6 +212,9 @@ VALUE_TYPE treeNode::codegen() {
 	}
 
 	// condition operators
+	else if (type == "CONDITION") {
+		return children[0]->codegen();
+	}
 	else if (type == "EQ") {
 		return codegenCondExp(children[0], children[1], 0);
 	}
@@ -470,60 +473,159 @@ FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 	}
 }
 
-VALUE_TYPE FuncBlockNode::codegen(LLVMTypeRef retType, LLVMValueRef funcHeader) {
+VALUE_TYPE BranchNode::codegen(LLVMTypeRef retType) {
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 	LLVMContextRef currContext = contextStack.top();
 
-	for (int i = 0; i < children.size(); ++i)
-	{
-		std::string childType = children[i]->type;
+	LLVMBasicBlockRef curBlk = LLVMGetInsertBlock(currBuilder); // TODO: Check if this gives the current block
+	LLVMValueRef parentFuncHeader = LLVMGetBasicBlockParent(curBlk);
 
-		if (childType == "RETURN") {
-			if (retType == LLVMVoidType())
-				LLVMBuildRetVoid(currBuilder);
-			else {
-				LLVMBuildRet(currBuilder, children[i]->codegen()); //TODO: Update if return format changes
-			}
-		}
-		else {
-			// TODO: Write code for all statements here
-			if (childType == "decl") {
-				((DeclNode*)children[i])->codegen(false);
-			}
-			else if (childType == "ASSIGN") {
-				children[i]->codegen();
-			}
-			else { // binops and unary ops
-				children[i]->codegen();
-			}
-		}
+	if (type == "IF") {
+
+		LLVMBasicBlockRef endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
+		LLVMBasicBlockRef then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
+
+		LLVMPositionBuilderAtEnd(currBuilder, then_blk); // generated code for then
+		((CondBlockNode*)children[1])->codegen(retType, endif);
+
+		LLVMPositionBuilderAtEnd(currBuilder, curBlk); // add to the current block
+		LLVMValueRef conditionCode = children[0]->codegen(); // generated code for if
+		LLVMBuildCondBr(currBuilder, conditionCode, then_blk, endif);		
+
+		LLVMPositionBuilderAtEnd(currBuilder, endif); // add to the endif block
+	}
+	else if (type == "ITE") {
+
+		LLVMBasicBlockRef endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
+		LLVMBasicBlockRef then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
+		LLVMBasicBlockRef else_blk = LLVMAppendBasicBlock(parentFuncHeader, "else"); // basic block for else
+
+		LLVMPositionBuilderAtEnd(currBuilder, then_blk); // generated code for then
+		((CondBlockNode*)children[1])->codegen(retType, endif);
+
+		LLVMPositionBuilderAtEnd(currBuilder, else_blk); // generated code for else
+		((CondBlockNode*)children[2])->codegen(retType, endif);
+
+		LLVMPositionBuilderAtEnd(currBuilder, curBlk); // add to the current block
+		LLVMValueRef conditionCode = children[0]->codegen(); // generated code for if
+		LLVMBuildCondBr(currBuilder, conditionCode, then_blk, else_blk);		
+
+		LLVMPositionBuilderAtEnd(currBuilder, endif); // add to the endif block
+	}
+	else if (type == "WHILE") {
+
+		LLVMBasicBlockRef endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
+		LLVMBasicBlockRef then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
+		LLVMBasicBlockRef else_blk = LLVMAppendBasicBlock(parentFuncHeader, "else"); // basic block for else
+
+		// jump to the else block first
+		LLVMBuildBr(currBuilder, else_blk);
+
+		LLVMPositionBuilderAtEnd(currBuilder, then_blk); // generated code for then
+		((CondBlockNode*)children[1])->codegen(retType, else_blk); // goes back to the if condition again
+
+		LLVMPositionBuilderAtEnd(currBuilder, else_blk); // add to the else block
+		LLVMValueRef conditionCode = children[0]->codegen(); // generated code for if
+		LLVMBuildCondBr(currBuilder, conditionCode, then_blk, endif);		
+
+		LLVMPositionBuilderAtEnd(currBuilder, endif); // add to the endif block
+	}
+	else if (type == "DO-WHILE") {
+
+		LLVMBasicBlockRef endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
+		LLVMBasicBlockRef then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
+		LLVMBasicBlockRef else_blk = LLVMAppendBasicBlock(parentFuncHeader, "else"); // basic block for else
+
+		// jump to the then block first
+		LLVMBuildBr(currBuilder, then_blk);
+
+		LLVMPositionBuilderAtEnd(currBuilder, then_blk); // generated code for then
+		((CondBlockNode*)children[0])->codegen(retType, else_blk); // goes back to the if condition again
+
+		LLVMPositionBuilderAtEnd(currBuilder, else_blk); // add to the else block
+		LLVMValueRef conditionCode = children[1]->codegen(); // generated code for if
+		LLVMBuildCondBr(currBuilder, conditionCode, then_blk, endif);		
+
+		LLVMPositionBuilderAtEnd(currBuilder, endif); // add to the endif block
+	}
+	else if (type == "FOR") {
+
+		//Initialization expression
+		children[0]->codegen();
+
+		// Now code for the actual loop
+		LLVMBasicBlockRef endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
+		LLVMBasicBlockRef then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
+		LLVMBasicBlockRef else_blk = LLVMAppendBasicBlock(parentFuncHeader, "else"); // basic block for else
+		LLVMBasicBlockRef increment_blk = LLVMAppendBasicBlock(parentFuncHeader, "increment"); // basic block for increment
+
+		// jump to the else block first
+		LLVMBuildBr(currBuilder, else_blk);
+
+		LLVMPositionBuilderAtEnd(currBuilder, then_blk); // generated code for then
+		((CondBlockNode*)children[3])->codegen(retType, increment_blk); // goes back to the if condition again
+
+		LLVMPositionBuilderAtEnd(currBuilder, else_blk); // add to the else block
+		LLVMValueRef conditionCode = children[1]->codegen(); // generated code for if
+		LLVMBuildCondBr(currBuilder, conditionCode, then_blk, endif);	
+
+		LLVMPositionBuilderAtEnd(currBuilder, increment_blk); // add to the increment block
+		children[2]->codegen(); // update expression
+		LLVMBuildBr(currBuilder, else_blk);
+
+		LLVMPositionBuilderAtEnd(currBuilder, endif); // add to the endif block
 	}
 
 	return NULL;
 }
 
-VALUE_TYPE CondBlockNode::codegen(LLVMTypeRef retTypeIfReqd, LLVMBasicBlockRef afterDest) {
-	// Push a new context and builder, create a basic block ref
+void callBlockInst(treeNode* t, LLVMBuilderRef currBuilder, LLVMTypeRef retType) {
+	for (int i = 0; i < t->children.size(); ++i)
+	{
+		std::string childType = t->children[i]->type;
 
-	// LLVMBasicBlockRef entry = LLVMAppendBasicBlock(funcHeader, "entry");
+		if (childType == "RETURN") {
+			if (retType == LLVMVoidType())
+				LLVMBuildRetVoid(currBuilder);
+			else {
+				LLVMBuildRet(currBuilder, t->children[i]->codegen()); //TODO: Update if return format changes
+			}
+		}
+		else {
+			// TODO: Write code for all statements here
+			if (childType == "decl") {
+				((DeclNode*)t->children[i])->codegen(false);
+			}
+			else if (childType == "ASSIGN") {
+				t->children[i]->codegen();
+			}
+			else if (childType == "IF" || childType == "ITE" || childType == "WHILE" || childType == "DO-WHILE" || childType == "FOR") {
+				((BranchNode*)t->children[i])->codegen(retType);
+			}
+			else { // binops and unary ops
+				t->children[i]->codegen();
+			}
+		}
+	}
+}
+
+VALUE_TYPE FuncBlockNode::codegen(LLVMTypeRef retType, LLVMValueRef funcHeader) {
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 	LLVMContextRef currContext = contextStack.top();
 
-	for (int i = 0; i < children.size(); ++i)
-	{
-		std::string childType = children[i]->type;
+	callBlockInst((treeNode*)this, currBuilder, retType);
 
-		if (childType == "RETURN") {
-			if (retTypeIfReqd == LLVMVoidType())
-				LLVMBuildRetVoid(currBuilder);
-			else
-				children[i]->codegen(); //TODO: Update if return format changes
-		}
-		else ;
-			// TODO: Write code for all statements here
-	}
+	return NULL;
+}
+
+VALUE_TYPE CondBlockNode::codegen(LLVMTypeRef retTypeIfReqd, LLVMBasicBlockRef afterDest) {
+
+	LLVMBuilderRef currBuilder = builderStack.top();
+	LLVMContextRef currContext = contextStack.top();
+
+	callBlockInst((treeNode*)this, currBuilder, retTypeIfReqd);
 
 	LLVMBuildBr(currBuilder, afterDest);
 
