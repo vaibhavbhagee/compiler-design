@@ -21,8 +21,8 @@ int main2(int d, int c)
 
 	int c;
 	c = 0;
-	c++;
-	d++;
+	c--;
+	// d--;
 	c + 1;
 	d != 1;
 	c == 0;
