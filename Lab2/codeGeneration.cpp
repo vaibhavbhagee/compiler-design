@@ -98,11 +98,26 @@ VALUE_TYPE codegenBinExp(treeNode* lhs, treeNode* rhs, LLVMOpcode Op, bool logic
 	if (LLVMGetTypeKind(LLVMTypeOf(lhsVal)) == LLVMFloatTypeKind &&
 	 LLVMGetTypeKind(LLVMTypeOf(rhsVal)) == LLVMFloatTypeKind && !logical){
 
-		return LLVMBuildBinOp(currBuilder, ((LLVMOpcode)(Op + 1)), lhsVal, rhsVal, "flt_op");
+		return LLVMBuildBinOp(currBuilder, ((LLVMOpcode)(Op + 1)), lhsVal, rhsVal, "_flt_op");
 	}
 	else {
-		return LLVMBuildBinOp(currBuilder, Op, lhsVal, rhsVal, "int_op");
+		return LLVMBuildBinOp(currBuilder, Op, lhsVal, rhsVal, "_int_op");
 	}
+}
+
+VALUE_TYPE constShift(treeNode* node, ConstNode* cons, LLVMOpcode Op) {
+
+	LLVMBuilderRef currBuilder = builderStack.top();
+
+	LLVMValueRef constVal = cons->codegen();
+	std::string varName = ((IdentNode*)(node))->name;
+	LLVMValueRef Ident = node->codegen();
+	LLVMValueRef IdentVal = loadValueifNeeded(node, Ident);
+
+	std::string tag = varName + "_const_op";
+	LLVMValueRef var_incr = LLVMBuildBinOp(currBuilder, Op, IdentVal, constVal, tag.c_str());
+
+	return LLVMBuildStore(currBuilder, var_incr, Ident);
 }
 
 
@@ -227,23 +242,33 @@ VALUE_TYPE treeNode::codegen() {
 	else if (type == "LT") {
 		return codegenCondExp(children[0], children[1], 3);
 	}
-	else if (type == "GTE") {
+	else if (type == "GEQ") {
 		return codegenCondExp(children[0], children[1], 4);
 	}
-	else if (type == "LTE") {
+	else if (type == "LEQ") {
 		return codegenCondExp(children[0], children[1], 5);
 	}
 
 	// unary operators
 	else if (type == "INC") {
 		ConstNode* temp = new ConstNode(1);
-		return codegenBinExp(children[0], temp, LLVMAdd, true);
+		return constShift(children[0], temp, LLVMAdd);
 	}
 	else if (type == "DEC") {
 		ConstNode* temp = new ConstNode(1);
-		return codegenBinExp(children[0], temp, LLVMSub, true);
+		return constShift(children[0], temp, LLVMSub);
 	}
 
+	// pointer ops
+	else if (type == "DEREF") {
+		LLVMValueRef derefVal = children[0]->codegen();
+		derefVal = loadValueifNeeded(children[0], derefVal);
+		return LLVMBuildLoad(currBuilder, derefVal, "deref");
+	}
+	else if (type == "REF") {
+		LLVMValueRef refVal = children[0]->codegen();
+		return refVal;
+	}
 
 	return NULL;
 }

@@ -57,17 +57,22 @@ int main2(int d, int c)
 		arr[c] = c;
 	}
 
-	return c;
+	int*** a;
+	int **b;
+	a = &b;
+
+	return ***a;
 }
 
-// int main(void)
-// {
-// 	int arg1;
-// 	float arg2;
-// 	arg1 = 0;
-// 	arg2 = main2(0, arg1);
-// 	return arg1;
-// }
+int main(void)
+{
+	// return 0;
+	int arg1;
+	int arg2;
+	arg1 = 0;
+	arg2 = main2(0, arg1);
+	return arg1;
+}
 
 // void printf(int **a, int d, int c)
 // {

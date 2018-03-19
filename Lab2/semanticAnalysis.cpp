@@ -251,7 +251,14 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		scopes.push(expandScope(scopes.top(), node));
 		std::string block_ret = checkType(node->children[2], ret_type, scopes, functions);
 		scopes.pop(); 
-		return block_ret;
+
+		if (ret_type == "VOID" || block_ret == "RETURN") {
+			return "VOID";
+		}
+
+		std::string fname = ((IdentNode*)(node->children[1]->children[0]))->name;
+		std::cout << "Incorrect return type from function " << fname << std::endl;
+		return "";
 	}
 	else if (type == "RETURN") {
 		if (node->children.size()) {
@@ -272,7 +279,9 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 			return "VOID";
 		}
 		else {
-			std::cout << "Incorrectly assigned type to " << ((IdentNode*)(node->children[0]))->name << std::endl;
+			if (node->children[0]->type == "Ident") {
+				std::cout << "Incorrectly assigned type to " << ((IdentNode*)(node->children[0]))->name << std::endl;
+			}
 			return "";
 		}
 	}
@@ -334,6 +343,13 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 			lhs.pop_back();
 			return lhs;
 		}
+		// get the variable being dereferenced
+		treeNode* temp = node->children[0];
+		std::cout << temp->type << std::endl;
+		while (temp->type != "Ident") {
+			temp = temp->children[0];
+		}
+		std::cout << "Cannot Further Dereference " << ((IdentNode*)temp)->name << std::endl;
 		return "";
 	}
 	else if (type == "CONDITION") {
@@ -350,8 +366,12 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 			if (type == "BLOCK" && child->type == "RETURN") {
 				if (i == node->children.size() - 1) { // return is last in block
 					if (curr_type == typ) {			  // return type matches function def
-						return "VOID";
+						return "RETURN";
 					}
+				}
+				else {
+					std::cout << "Dead code in block after return" << std::endl;
+					return "";
 				}
 				return "";
 			}
