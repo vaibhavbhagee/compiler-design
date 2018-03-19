@@ -514,6 +514,7 @@ FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 	else {
 		std::vector<LLVMTypeRef> fparams;
 		LLVMContextRef currContext = contextStack.top();
+		bool isVariadic = ((ParamNode*)children[1])->isVariadic;
 
 		for (auto child : children[1]->children) {
 			std::string childType = child->children[0]->type;
@@ -522,7 +523,7 @@ FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 
 		LLVMTypeRef* paramTypeList = fparams.data();
 
-		LLVMTypeRef retType = LLVMFunctionType(type, paramTypeList, fparams.size(), 0);
+		LLVMTypeRef retType = LLVMFunctionType(type, paramTypeList, fparams.size(), isVariadic);
 	    LLVMValueRef funcDecl = LLVMAddFunction(mod, funcName.c_str(), retType);
 
 	    // Add to function symbol table
