@@ -171,7 +171,7 @@ VALUE_TYPE treeNode::codegen() {
 
 	    return NULL;
 	}
-	else if (type == "RETURN") { //TODO: Check if you have to led here or return as is
+	else if (type == "RETURN") { //TODO: Check if you have to load here or return as is
 		
 		LLVMValueRef rhsVal = children[0]->codegen(); //TODO: Codegen is called in a similar way
 		rhsVal = loadValueifNeeded(children[0], rhsVal);
@@ -323,19 +323,23 @@ VALUE_TYPE ArrayNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 		return allocate;
 	}
 
-	// LLVMBuilderRef currBuilder = builderStack.top();
-	// std::string varName = ((IdentNode*)children[0])->name;
-	// int arrayLen= ((IdentNode*)children[1])->ival;
-	// LLVMTypeRef arrayType = LLVMArrayType(type, arrayLen) // TODO: See about context
+	LLVMBuilderRef currBuilder = builderStack.top();
+	std::string varName = ((IdentNode*)children[0])->name;
+	int arrayLen= ((ConstNode*)children[1])->ival;
+	LLVMTypeRef arrayType = LLVMArrayType(type, arrayLen); // TODO: See about context
 
-	// // TODO: Look at the third parameter
-	// LLVMValueRef allocate = LLVMBuildArrayAlloca(currBuilder, arrayType, /*What is this?*/, varName.c_str());
+	// Trial: Get function header entry
+	LLVMBasicBlockRef curBlk = LLVMGetInsertBlock(currBuilder); // TODO: Check if this gives the current block
+	LLVMValueRef parentFuncHeader = LLVMGetBasicBlockParent(curBlk);
 
-	// symTable.top()[varName] = allocate;
+	// TODO: Look at the third parameter
+	LLVMValueRef allocate = LLVMBuildArrayAlloca(currBuilder, arrayType, NULL /*This could probably be the function header value*/, varName.c_str());
 
-	// return allocate;	
+	symTable.top()[varName] = allocate;
 
-	return NULL;
+	return allocate;	
+
+	// return NULL;
 }
 
 VALUE_TYPE PointerNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
@@ -659,10 +663,6 @@ void codegen(treeNode* AST) {
 	fprintf(f, "%s\n", LLVMPrintModuleToString(mod));
 
 	fclose(f);
-
-	// TRIAL END
-
-    // printf("%s\n", LLVMPrintModuleToString(mod));
 
     LLVMContextRef stackContext = contextStack.top();
 	LLVMBuilderRef stackBuilder = builderStack.top();

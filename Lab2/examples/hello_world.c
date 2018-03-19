@@ -13,41 +13,48 @@ int main2(int d, int c)
   // int** d;
   // printf(d, b, c);
 
-	float ctemp1, ctemp2;
-	ctemp1 = 1.0 + ctemp2;
-	ctemp2 = ctemp1 * ctemp1;
-	ctemp1 = ctemp1 - 5.0;
-	ctemp1 = ctemp2 / ctemp1;
+	// float ctemp1, ctemp2;
+	// ctemp1 = 1.0 + ctemp2;
+	// ctemp2 = ctemp1 * ctemp1;
+	// ctemp1 = ctemp1 - 5.0;
+	// ctemp1 = ctemp2 / ctemp1;
 
+	// int c;
+	// c = 0;
+	// d = d + c + d;
+	// c++;
+	// d++;
+	// c + 1;
+	// d != 1;
+
+	// for (c = 0; c < 10; c++) {
+	// 	d++;
+	// }
+
+	// while (d <10) {
+	// 	d++;
+	// }
+
+	// do {
+	// 	d++;
+	// } while (d < 11);
+
+	// if (d < 10) {
+	// 	d = 11;
+	// }
+
+	// if (d < 11) {
+	// 	d++;
+	// }
+	// else {
+	// 	d--;
+	// }
 	int c;
-	c = 0;
-	d = d + c + d;
-	c++;
-	d++;
-	c + 1;
-	d != 1;
 
-	for (c = 0; c < 10; c++) {
-		d++;
-	}
+	int arr[10];
 
-	while (d <10) {
-		d++;
-	}
-
-	do {
-		d++;
-	} while (d < 11);
-
-	if (d < 10) {
-		d = 11;
-	}
-
-	if (d < 11) {
-		d++;
-	}
-	else {
-		d--;
+	for (c = 0; c<10; c++) {
+		arr[c] = c;
 	}
 
 	return c;
