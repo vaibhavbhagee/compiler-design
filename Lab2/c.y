@@ -39,7 +39,7 @@ treeNode *ASTree = NULL;
 %token	<sval> IDENTIFIER 
 %token  <ival> I_CONSTANT 
 %token  <fval> F_CONSTANT 
-%token  STRING_LITERAL FUNC_NAME
+%token  STRING_LITERAL FUNC_NAME ELLIPSIS
 %token 	SIZEOF
 %token	PTR_OP LEFT_OP RIGHT_OP 
 %token  INC_OP DEC_OP LE_OP GE_OP EQ_OP NE_OP
@@ -55,7 +55,7 @@ treeNode *ASTree = NULL;
 %token  SHORT LONG SIGNED UNSIGNED DOUBLE
 %token	BOOL CHAR INT FLOAT VOID
 %token	COMPLEX IMAGINARY 
-%token	STRUCT UNION ENUM ELLIPSIS
+%token	STRUCT UNION ENUM
 
 %token	CASE DEFAULT SWITCH GOTO CONTINUE BREAK 
 %token IF ELSE WHILE DO FOR RETURN
@@ -192,14 +192,15 @@ function_definition
 	;
 
 parameter_type_list
-	: parameter_list 							{$$ = $1;}
+	: parameter_list ',' ELLIPSIS				{((ParamNode*)$1)->isVariadic = 1; $$ = $1;}
+	| parameter_list 							{$$ = $1;}
 	| VOID 										{treeNode *temp = new treeNode("VOID"); $$ = temp;}
 	;
 
 parameter_list
-	: parameter_declaration  					{treeNode *temp = new treeNode("params"); temp->children.push_back($1); $$ = temp;}
+	: parameter_declaration  					{ParamNode *temp = new ParamNode("params"); temp->children.push_back($1); $$ = temp;}
 	| parameter_list ',' parameter_declaration  {
-													treeNode *temp = new treeNode("params"); 
+													ParamNode *temp = new ParamNode("params"); 
 													for (int i = 0; i<$1->children.size(); i++)
 													{
 														temp->children.push_back($1->children[i]);

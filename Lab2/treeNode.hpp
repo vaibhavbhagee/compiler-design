@@ -170,6 +170,41 @@ class FunctionNode : public treeNode {
 		}
 };
 
+class ParamNode : public treeNode {
+	public:
+		int isVariadic;
+
+		// VALUE_TYPE codegen() override;
+
+		ParamNode() {
+			type = "";
+			isVariadic = 0;
+		}
+
+		ParamNode(std::string n) {
+			type = n;
+			isVariadic = 0;
+		}
+
+		ParamNode(ParamNode &t) {
+			type = t.type;
+			children = t.children;
+			isVariadic = 0;
+		}
+
+		ParamNode(ParamNode *t) {
+			type = t->type;
+			children = t->children;
+			isVariadic = 0;
+		}
+
+		ParamNode(treeNode *t) {
+			type = t->type;
+			children = t->children;
+			isVariadic = 0;
+		}
+};
+
 class BranchNode : public treeNode {
 	public:
 		VALUE_TYPE codegen(LLVMTypeRef retType);
