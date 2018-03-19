@@ -97,7 +97,7 @@ LLVMTypeRef stringToLLVMType(std::string typeName, LLVMContextRef c) {
 }
 
 
-VALUE_TYPE useArray(treeNode* node, VALUE_TYPE prev_val) {
+VALUE_TYPE useArray(treeNode* node, VALUE_TYPE array) {
 	LLVMBuilderRef currBuilder = builderStack.top();
 
 	// get the code for index and load if needed
@@ -108,14 +108,12 @@ VALUE_TYPE useArray(treeNode* node, VALUE_TYPE prev_val) {
 
 	// get the name and tag
 	std::string name = ((IdentNode*)node)->name;
-	std::string tag = name + "_" + std::to_string(
-		((ConstNode*)node->children[0]->children[0])->ival) + "_";
+	std::string tag = name + "_" + ind + "_";
 
 	// get pointer to element of array at index
-	LLVMValueRef element_ptr = LLVMBuildInBoundsGEP(currBuilder, prev_val, &index, 1, tag.c_str());
+	LLVMValueRef element_ptr = LLVMBuildInBoundsGEP(currBuilder, array, &index, 1, tag.c_str());
 	
 	// get type of array, and get the array element type*
-	LLVMTypeRef array_type = LLVMTypeOf(prev_val);
 	LLVMTypeRef elem_type = searchInArrTable(name, arrSymTable);
 	LLVMTypeRef elem_type_ptr = LLVMPointerType(elem_type, 0);
 	LLVMValueRef element_ptr_actual = LLVMBuildBitCast(currBuilder, element_ptr, elem_type_ptr, "cast");
@@ -268,7 +266,8 @@ VALUE_TYPE treeNode::codegen() {
 
 		if (children[0]->children.size() > 0 && children[0]->children[0]->type == "[ ]") { 
 			// storage in array
-			LLVMValueRef element_ptr_actual = useArray(children[0], rhsVal);
+			LLVMValueRef element_ptr_actual = useArray(children[0], varPlace);
+
 			return LLVMBuildStore(currBuilder, rhsVal, element_ptr_actual);
 		}
 
