@@ -26,6 +26,9 @@ std::stack<LLVMBuilderRef> builderStack;
 LLVMIntPredicate toIntPred[6] = {LLVMIntEQ, LLVMIntNE, LLVMIntSGT, LLVMIntSLT, LLVMIntSGE, LLVMIntSLE};
 LLVMRealPredicate toRealPred[6] = {LLVMRealOEQ, LLVMRealONE, LLVMRealOGT, LLVMRealOLT, LLVMRealOGE, LLVMRealOLE};
 
+VALUE_TYPE useArray(treeNode* node, VALUE_TYPE prev_val);
+VALUE_TYPE loadValueifNeeded(treeNode* node, VALUE_TYPE prev_val);
+
 
 VALUE_TYPE searchInTable(std::string varName, 
 	std::stack< std::map<std::string, VALUE_TYPE> > &symTable, bool stopFirst=false) {
@@ -93,6 +96,33 @@ LLVMTypeRef stringToLLVMType(std::string typeName, LLVMContextRef c) {
 	else return NULL;
 }
 
+
+VALUE_TYPE useArray(treeNode* node, VALUE_TYPE prev_val) {
+	LLVMBuilderRef currBuilder = builderStack.top();
+
+	// get the code for index and load if needed
+	ConstNode* indexNode = (ConstNode*)(node->children[0]->children[0]);
+	std::string ind = std::to_string(indexNode->ival);
+	LLVMValueRef index = indexNode->codegen();
+	index = loadValueifNeeded(indexNode, index);
+
+	// get the name and tag
+	std::string name = ((IdentNode*)node)->name;
+	std::string tag = name + "_" + std::to_string(
+		((ConstNode*)node->children[0]->children[0])->ival) + "_";
+
+	// get pointer to element of array at index
+	LLVMValueRef element_ptr = LLVMBuildInBoundsGEP(currBuilder, prev_val, &index, 1, tag.c_str());
+	
+	// get type of array, and get the array element type*
+	LLVMTypeRef array_type = LLVMTypeOf(prev_val);
+	LLVMTypeRef elem_type = searchInArrTable(name, arrSymTable);
+	LLVMTypeRef elem_type_ptr = LLVMPointerType(elem_type, 0);
+	LLVMValueRef element_ptr_actual = LLVMBuildBitCast(currBuilder, element_ptr, elem_type_ptr, "cast");
+		
+	return element_ptr_actual;
+}
+
 VALUE_TYPE loadValueifNeeded(treeNode* node, VALUE_TYPE prev_val) {
 	// loads the value if its an id or a dereference, to be used for lhs vs rhs issues
 	LLVMBuilderRef currBuilder = builderStack.top();
@@ -111,21 +141,7 @@ VALUE_TYPE loadValueifNeeded(treeNode* node, VALUE_TYPE prev_val) {
 	}
 	//load array value
 	else if (node->type == "Ident" && node->children[0]->type == "[ ]") {
-		LLVMValueRef index = node->children[0]->children[0]->codegen();
-
-		std::string name = ((IdentNode*)node)->name;
-		std::string tag = name + "_" + std::to_string(
-			((ConstNode*)node->children[0]->children[0])->ival) + "_";
-
-		// return LLVMBuildExtractValue(currBuilder, prev_val, index, tag.c_str());
-		LLVMValueRef element_ptr = LLVMBuildInBoundsGEP(currBuilder, prev_val, &index, 1, tag.c_str());
-		
-		LLVMTypeRef array_type = LLVMTypeOf(prev_val);
-		LLVMTypeRef elem_type = searchInArrTable(name, arrSymTable);
-		LLVMTypeRef elem_type_ptr = LLVMPointerType(elem_type, 0);
-
-		LLVMValueRef element_ptr_actual = LLVMBuildBitCast(currBuilder, element_ptr, elem_type_ptr, "cast");
-		
+		LLVMValueRef element_ptr_actual = useArray(node, prev_val);		
 		return LLVMBuildLoad(currBuilder, element_ptr_actual, "array_deref_");
 	}
 	// load pointer value
@@ -250,21 +266,10 @@ VALUE_TYPE treeNode::codegen() {
 		LLVMValueRef rhsVal = children[1]->codegen();
 		rhsVal = loadValueifNeeded(children[1], rhsVal);
 
-		if (children[0]->children.size() > 0 && children[0]->children[0]->type == "[ ]") { // storage in array
-			ConstNode* indexNode = ((ConstNode*)children[0]->children[0]->children[0]);
-			std::string ind = std::to_string(indexNode->ival);
-			LLVMValueRef index = indexNode->codegen();
-
-			std::string tag = varName + "_" + ind + "_";
-			LLVMValueRef element_ptr = LLVMBuildInBoundsGEP(currBuilder, varPlace, &index, 1, tag.c_str());
-			
-			LLVMTypeRef array_type = LLVMTypeOf(varPlace);
-			LLVMTypeRef elem_type = searchInArrTable(varName, arrSymTable);
-			LLVMTypeRef elem_type_ptr = LLVMPointerType(elem_type, 0);
-			LLVMValueRef element_ptr_actual = LLVMBuildBitCast(currBuilder, element_ptr, elem_type_ptr, "cast");
-			
+		if (children[0]->children.size() > 0 && children[0]->children[0]->type == "[ ]") { 
+			// storage in array
+			LLVMValueRef element_ptr_actual = useArray(children[0], rhsVal);
 			return LLVMBuildStore(currBuilder, rhsVal, element_ptr_actual);
-			// return LLVMBuildInsertElement(currBuilder, varPlace, rhsVal, index, tag.c_str());
 		}
 
 		return LLVMBuildStore(currBuilder, rhsVal, varPlace); 
