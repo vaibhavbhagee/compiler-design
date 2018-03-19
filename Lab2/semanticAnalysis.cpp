@@ -257,7 +257,7 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		}
 
 		std::string fname = ((IdentNode*)(node->children[1]->children[0]))->name;
-		std::cout << "Incorrect return type from function " << fname << std::endl;
+		std::cout << "Incorrect type of value returned from function " << fname << std::endl;
 		return "";
 	}
 	else if (type == "RETURN") {

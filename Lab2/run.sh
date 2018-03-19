@@ -1,5 +1,5 @@
 make clean
 make
-./cc examples/hello_world.c
+./cc examples/link-try.c
 cat generated_code.txt
 lli generated_code.txt

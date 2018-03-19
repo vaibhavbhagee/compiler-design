@@ -63,11 +63,16 @@ LLVMTypeRef stringToLLVMType(std::string typeName, LLVMContextRef c) {
 	else if (typeName == "FLOAT") return LLVMFloatTypeInContext(c);
 	else if (typeName == "VOID") return LLVMVoidTypeInContext(c);
 	else if (typeName == "CHAR") return LLVMInt8TypeInContext(c); //TODO: Check this
+	else if (typeName.find("*") != std::string::npos) {
+		typeName.pop_back();
+		LLVMTypeRef base = stringToLLVMType(typeName, c);
+		return LLVMPointerType(base, 0);
+	}
 	else return NULL;
 }
 
 VALUE_TYPE loadValueifNeeded(treeNode* node, VALUE_TYPE prev_val) {
-
+	// loads the value if its an id or a dereference, to be used for lhs vs rhs issues
 	LLVMBuilderRef currBuilder = builderStack.top();
 
 	// check for node variable and load accordingly
@@ -82,6 +87,24 @@ VALUE_TYPE loadValueifNeeded(treeNode* node, VALUE_TYPE prev_val) {
 			return LLVMBuildLoad(currBuilder, prev_val, tag.c_str());
 		}
 	}
+	//load array value
+	else if (node->type == "Ident" && node->children[0]->type == "[ ]") {
+		LLVMValueRef index = node->children[0]->children[0]->codegen();
+
+		std::string tag = ((IdentNode*)node)->name;
+		tag += "_" + std::to_string(
+			((ConstNode*)node->children[0]->children[0])->ival) + "_";
+
+		// return LLVMBuildExtractValue(currBuilder, prev_val, index, tag.c_str());
+		LLVMValueRef element_ptr = LLVMBuildInBoundsGEP(currBuilder, prev_val, &index, 1, tag.c_str());
+		return LLVMBuildLoad(currBuilder, element_ptr, "array_deref_");
+	}
+	// load pointer value
+	else if (node->type == "DEREF") {
+		return LLVMBuildLoad(currBuilder, prev_val, "ptr_deref");
+	}
+
+
 	return prev_val;
 }
 
@@ -141,7 +164,6 @@ VALUE_TYPE codegenCondExp(treeNode* lhs, treeNode* rhs, int Op, bool logical=fal
 	}
 }
 
-
 VALUE_TYPE treeNode::codegen() {
 
 	LLVMContextRef currContext = contextStack.top();
@@ -188,15 +210,23 @@ VALUE_TYPE treeNode::codegen() {
 	}
 	else if (type == "RETURN") { //TODO: Check if you have to load here or return as is
 		
-		LLVMValueRef rhsVal = children[0]->codegen(); //TODO: Codegen is called in a similar way
+		LLVMValueRef rhsVal = children[0]->codegen();
 		rhsVal = loadValueifNeeded(children[0], rhsVal);
 
 		return rhsVal;
 	}
-	else if (type == "ASSIGN") { // TODO: Check where to load and where to return as is
+	else if (type == "ASSIGN") {
 		LLVMValueRef varPlace = children[0]->codegen();
-		LLVMValueRef rhsVal = children[1]->codegen(); //TODO: Codegen is called in a similar way
+		LLVMValueRef rhsVal = children[1]->codegen();
 		rhsVal = loadValueifNeeded(children[1], rhsVal);
+
+		if (children[0]->children.size() > 0 && children[0]->children[0]->type == "[ ]") { // storage in array
+			LLVMValueRef index = children[0]->children[0]->children[0]->codegen();
+			std::string tag = ((IdentNode*)children[0])->name;
+			tag += "_" + std::to_string(
+				((ConstNode*)children[0]->children[0]->children[0])->ival) + "_";
+			return LLVMBuildInsertElement(currBuilder, varPlace, rhsVal, index, tag.c_str());
+		}
 
 		return LLVMBuildStore(currBuilder, rhsVal, varPlace); 
 	}
@@ -263,7 +293,7 @@ VALUE_TYPE treeNode::codegen() {
 	else if (type == "DEREF") {
 		LLVMValueRef derefVal = children[0]->codegen();
 		derefVal = loadValueifNeeded(children[0], derefVal);
-		return LLVMBuildLoad(currBuilder, derefVal, "deref");
+		return derefVal;
 	}
 	else if (type == "REF") {
 		LLVMValueRef refVal = children[0]->codegen();
@@ -350,7 +380,7 @@ VALUE_TYPE ArrayNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 	std::string varName = ((IdentNode*)children[0])->name;
-	int arrayLen= ((ConstNode*)children[1])->ival;
+	int arrayLen = ((ConstNode*)children[1])->ival;
 	LLVMTypeRef arrayType = LLVMArrayType(type, arrayLen); // TODO: See about context
 
 	// Trial: Get function header entry
@@ -375,7 +405,6 @@ VALUE_TYPE PointerNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 
 	if (childType == "POINTER") {
 		LLVMTypeRef pointerType = LLVMPointerType(type, 0);
-
 		return ((PointerNode*)children[0])->codegen(isGlobalContext, pointerType);
 	}
 	else if (childType == "VARIABLE") {
@@ -486,8 +515,9 @@ FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 		std::vector<LLVMTypeRef> fparams;
 		LLVMContextRef currContext = contextStack.top();
 
-		for (auto child : children[1]->children) { 
-			fparams.push_back(stringToLLVMType(child->children[0]->type, currContext));
+		for (auto child : children[1]->children) {
+			std::string childType = child->children[0]->type;
+			fparams.push_back(stringToLLVMType(childType, currContext));
 		}
 
 		LLVMTypeRef* paramTypeList = fparams.data();
@@ -610,8 +640,7 @@ VALUE_TYPE BranchNode::codegen(LLVMTypeRef retType) {
 }
 
 void callBlockInst(treeNode* t, LLVMBuilderRef currBuilder, LLVMTypeRef retType) {
-	for (int i = 0; i < t->children.size(); ++i)
-	{
+	for (int i = 0; i < t->children.size(); ++i) {
 		std::string childType = t->children[i]->type;
 
 		if (childType == "RETURN") {

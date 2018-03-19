@@ -54,14 +54,15 @@ int main2(int d, int c)
 	int arr[10];
 
 	for (c = 0; c<10; c++) {
-		arr[c] = c;
+		// arr[c] = c;
 	}
 
 	int*** a;
 	int **b;
 	a = &b;
 
-	return ***a;
+	// return ***a;
+	return 0;
 }
 
 int main(void)
