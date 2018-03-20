@@ -382,13 +382,22 @@ VALUE_TYPE InitDeclNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 	return NULL;
 }
 
+VALUE_TYPE getGlobalDeclaration(LLVMModuleRef mod, LLVMTypeRef type, std::string varName) {
+	LLVMValueRef allocate = LLVMAddGlobal(mod, type, varName.c_str());	
+	LLVMSetLinkage(allocate, LLVMCommonLinkage);
+	LLVMSetGlobalConstant(allocate, 0);
+	// TODO: check if initialization required
+
+	return allocate;
+}
+
 VALUE_TYPE VariableNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 
 	if (isGlobalContext)
 	{
 		std::string varName = ((IdentNode*)children[0])->name;
 
-		LLVMValueRef allocate = LLVMAddGlobal(mod, type, varName.c_str());
+		LLVMValueRef allocate = getGlobalDeclaration(mod, type, varName.c_str());
 
 		// Add to the symbol table
 		symTable.top()[varName] = allocate;
@@ -413,9 +422,11 @@ VALUE_TYPE ArrayNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 		std::string varName = ((IdentNode*)children[0])->name;
 		int arrayLen= ((ConstNode*)children[1])->ival;
 		LLVMTypeRef arrayType = LLVMArrayType(type, arrayLen);
+		LLVMBuilderRef currBuilder = builderStack.top();
 
-		LLVMValueRef allocate = LLVMAddGlobal(mod, arrayType, varName.c_str());
-
+		LLVMValueRef allocate = getGlobalDeclaration(mod, arrayType, varName.c_str());
+		// LLVMValueRef allocate = LLVMBuildArrayAlloca(currBuilder, arrayType, NULL /*This could probably be the function header value*/, varName.c_str());
+		
 		symTable.top()[varName] = allocate;
 		arrSymTable.top()[varName] = type;
 
@@ -716,15 +727,28 @@ void callBlockInst(treeNode* t, LLVMBuilderRef currBuilder, LLVMTypeRef retType)
 
 VALUE_TYPE FuncBlockNode::codegen(LLVMTypeRef retType, LLVMValueRef funcHeader) {
 
+	std::map<std::string, VALUE_TYPE> varMap;
+	std::map<std::string, LLVMTypeRef> arrMap;
+	symTable.push(varMap);
+	arrSymTable.push(arrMap);
+
 	LLVMBuilderRef currBuilder = builderStack.top();
 	LLVMContextRef currContext = contextStack.top();
 
 	callBlockInst((treeNode*)this, currBuilder, retType);
 
+	symTable.pop();
+	arrSymTable.pop();
+
 	return NULL;
 }
 
 VALUE_TYPE CondBlockNode::codegen(LLVMTypeRef retTypeIfReqd, LLVMBasicBlockRef afterDest) {
+
+	std::map<std::string, VALUE_TYPE> varMap;
+	std::map<std::string, LLVMTypeRef> arrMap;
+	symTable.push(varMap);
+	arrSymTable.push(arrMap);
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 	LLVMContextRef currContext = contextStack.top();
@@ -732,6 +756,9 @@ VALUE_TYPE CondBlockNode::codegen(LLVMTypeRef retTypeIfReqd, LLVMBasicBlockRef a
 	callBlockInst((treeNode*)this, currBuilder, retTypeIfReqd);
 
 	LLVMBuildBr(currBuilder, afterDest);
+
+	symTable.pop();
+	arrSymTable.pop();
 
 	return NULL;
 }
