@@ -341,7 +341,7 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		std::string rhs = checkType(node->children[1], curr_type, scopes, functions, isFuncVariadic);
 		return (lhs == rhs)?"BOOL":"";
 	}
-	else if (type == "LT" || type == "GT" || type == "LTE" || type == "GTE" ) {
+	else if (type == "LT" || type == "GT" || type == "LEQ" || type == "GEQ" ) {
 		std::string lhs = checkType(node->children[0], curr_type, scopes, functions, isFuncVariadic);
 		std::string rhs = checkType(node->children[1], curr_type, scopes, functions, isFuncVariadic);
 		return (lhs == rhs)?"BOOL":"";

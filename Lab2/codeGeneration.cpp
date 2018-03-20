@@ -16,7 +16,6 @@ LLVMModuleRef mod;
 std::stack< std::map<std::string, FUNCTION_TYPE> > funcSymTable;
 std::stack< std::map<std::string, VALUE_TYPE> > argSymTable;
 std::stack< std::map<std::string, VALUE_TYPE> > symTable;
-std::stack< std::map<std::string, LLVMTypeRef> > arrSymTable;
 
 // stack of contexts/builders - operate in concert
 std::stack<LLVMContextRef> contextStack;
@@ -111,14 +110,10 @@ VALUE_TYPE useArray(treeNode* node, VALUE_TYPE array) {
 	std::string tag = name + "_" + ind + "_";
 
 	// get pointer to element of array at index
-	LLVMValueRef element_ptr = LLVMBuildInBoundsGEP(currBuilder, array, &index, 1, tag.c_str());
-	
-	// get type of array, and get the array element type*
-	LLVMTypeRef elem_type = searchInArrTable(name, arrSymTable);
-	LLVMTypeRef elem_type_ptr = LLVMPointerType(elem_type, 0);
-	LLVMValueRef element_ptr_actual = LLVMBuildBitCast(currBuilder, element_ptr, elem_type_ptr, "cast");
-		
-	return element_ptr_actual;
+	LLVMValueRef base_ptr = LLVMBuildStructGEP(currBuilder, array, 0, tag.c_str());
+	LLVMValueRef element_ptr = LLVMBuildInBoundsGEP(currBuilder, base_ptr, &index, 1, "");
+
+	return element_ptr;
 }
 
 VALUE_TYPE loadValueifNeeded(treeNode* node, VALUE_TYPE prev_val) {
@@ -405,12 +400,13 @@ VALUE_TYPE getTypeZero(LLVMTypeRef type, std::string array_name="", int array_le
 		return LLVMConstPointerNull(type);
 	}
 	else if (type_kind ==  LLVMArrayTypeKind) {
-		LLVMValueRef* init_vals = new LLVMValueRef[array_length];
-		LLVMTypeRef elem_type = searchInArrTable(array_name, arrSymTable);
-		for (int i = 0; i < array_length; i++) {
-			init_vals[i] = getTypeZero(elem_type);
-		}
-		return LLVMConstArray(elem_type, init_vals, array_length);
+		// LLVMValueRef* init_vals = new LLVMValueRef[array_length];
+		// LLVMTypeRef elem_type = searchInArrTable(array_name, arrSymTable);
+		// for (int i = 0; i < array_length; i++) {
+		// 	init_vals[i] = getTypeZero(elem_type);
+		// }
+		// return LLVMConstArray(elem_type, init_vals, array_length);
+		return NULL;
 	}
 	return NULL;
 }
@@ -445,7 +441,6 @@ VALUE_TYPE ArrayNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 		LLVMSetInitializer (allocate, getTypeZero(type, varName, arrayLen));
 
 		symTable.top()[varName] = allocate;
-		arrSymTable.top()[varName] = type;
 		return allocate;
 	}
 
@@ -459,7 +454,6 @@ VALUE_TYPE ArrayNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 	LLVMValueRef allocate = LLVMBuildArrayAlloca(currBuilder, arrayType, NULL /*This could probably be the function header value*/, varName.c_str());
 
 	symTable.top()[varName] = allocate;
-	arrSymTable.top()[varName] = type;
 
 	return allocate;	
 }
@@ -749,15 +743,12 @@ VALUE_TYPE FuncBlockNode::codegen(LLVMTypeRef retType, LLVMValueRef funcHeader) 
 	std::map<std::string, VALUE_TYPE> varMap;
 	std::map<std::string, LLVMTypeRef> arrMap;
 	symTable.push(varMap);
-	arrSymTable.push(arrMap);
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 	LLVMContextRef currContext = contextStack.top();
-
 	callBlockInst((treeNode*)this, currBuilder, retType);
 
 	symTable.pop();
-	arrSymTable.pop();
 
 	return NULL;
 }
@@ -767,17 +758,13 @@ VALUE_TYPE CondBlockNode::codegen(LLVMTypeRef retTypeIfReqd, LLVMBasicBlockRef a
 	std::map<std::string, VALUE_TYPE> varMap;
 	std::map<std::string, LLVMTypeRef> arrMap;
 	symTable.push(varMap);
-	arrSymTable.push(arrMap);
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 	LLVMContextRef currContext = contextStack.top();
-
 	callBlockInst((treeNode*)this, currBuilder, retTypeIfReqd);
-
 	LLVMBuildBr(currBuilder, afterDest);
 
 	symTable.pop();
-	arrSymTable.pop();
 
 	return NULL;
 }
@@ -793,7 +780,6 @@ void codegen(treeNode* AST) {
 	contextStack.push(globalContext);
 	builderStack.push(globalBuilder);
 	symTable.push(variableMap);
-	arrSymTable.push(arrTypeMap);
 	argSymTable.push(argsMap);
 	funcSymTable.push(functionMap);
 
@@ -818,7 +804,6 @@ void codegen(treeNode* AST) {
 	contextStack.pop();
 	builderStack.pop();
 	symTable.pop();
-	arrSymTable.pop();
 	argSymTable.pop();
 	funcSymTable.pop();
 

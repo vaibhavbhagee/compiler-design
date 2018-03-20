@@ -322,7 +322,7 @@ class ConstNode : public treeNode {
 
 		ConstNode(std::string s) {
 			type = "Const";
-			name = "STRING";
+			name = "CHAR*";
 			sval = s;
 		}
 };
