@@ -553,17 +553,14 @@ VALUE_TYPE ConstNode::codegen() {
 		return LLVMConstReal(LLVMFloatTypeInContext(contextStack.top()), fval);
 	}
 	else { // String constants
+		std::string temp_sval = sval;
+		temp_sval.pop_back();
+		temp_sval = temp_sval.substr(1);
+
 		LLVMBuilderRef currBuilder = builderStack.top();
-		LLVMValueRef array =  LLVMConstStringInContext(contextStack.top(), sval.c_str(), sval.length(), false);
-		LLVMValueRef index = {0};
+		LLVMValueRef array = LLVMBuildGlobalStringPtr(currBuilder, temp_sval.c_str(), "const_string");
 
-		// get the name and tag
-		std::string tag = "const_string_access";
-
-		// get pointer to element of array at index
-		LLVMValueRef element_ptr = LLVMBuildInBoundsGEP(currBuilder, array, &index, 1, tag.c_str());
-
-		return element_ptr;
+		return array;
 	}
 }
 
