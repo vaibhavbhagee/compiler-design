@@ -26,7 +26,7 @@ std::stack<LLVMBuilderRef> builderStack;
 LLVMIntPredicate toIntPred[6] = {LLVMIntEQ, LLVMIntNE, LLVMIntSGT, LLVMIntSLT, LLVMIntSGE, LLVMIntSLE};
 LLVMRealPredicate toRealPred[6] = {LLVMRealOEQ, LLVMRealONE, LLVMRealOGT, LLVMRealOLT, LLVMRealOGE, LLVMRealOLE};
 
-VALUE_TYPE useArray(treeNode* node, VALUE_TYPE prev_val);
+VALUE_TYPE useArray(treeNode* node, VALUE_TYPE array);
 VALUE_TYPE loadValueifNeeded(treeNode* node, VALUE_TYPE prev_val);
 
 
@@ -553,7 +553,17 @@ VALUE_TYPE ConstNode::codegen() {
 		return LLVMConstReal(LLVMFloatTypeInContext(contextStack.top()), fval);
 	}
 	else { // String constants
-		return LLVMConstStringInContext(contextStack.top(), sval.c_str(), sval.length(), false);
+		LLVMBuilderRef currBuilder = builderStack.top();
+		LLVMValueRef array =  LLVMConstStringInContext(contextStack.top(), sval.c_str(), sval.length(), false);
+		LLVMValueRef index = {0};
+
+		// get the name and tag
+		std::string tag = "const_string_access";
+
+		// get pointer to element of array at index
+		LLVMValueRef element_ptr = LLVMBuildInBoundsGEP(currBuilder, array, &index, 1, tag.c_str());
+
+		return element_ptr;
 	}
 }
 
