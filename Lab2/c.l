@@ -33,7 +33,7 @@ extern int sym_type(const char *);  /* returns type from symbol table */
 #define sym_type(identifier) IDENTIFIER /* with no symbol table, fake it */
 
 static void comment(void);
-static int check_type(void);
+static int check_type(int i);
 #define YY_DECL extern "C" int yylex()
 %}
 
@@ -89,7 +89,7 @@ static int check_type(void);
 "_Thread_local"                         { return THREAD_LOCAL; }
 "__func__"                              { return FUNC_NAME; }
 
-{L}{A}*					{ return check_type(); }
+{L}{A}*					{ return check_type(0); }
 
 {HP}{H}+{IS}?				{ yylval.ival = atoi(yytext); return I_CONSTANT; }
 {NZ}{D}*{IS}?				{ yylval.ival = atoi(yytext); return I_CONSTANT; }
@@ -103,7 +103,7 @@ static int check_type(void);
 {HP}{H}*"."{H}+{P}{FS}?			{ yylval.fval = std::stof(yytext); return F_CONSTANT; }
 {HP}{H}+"."{P}{FS}?			{ yylval.fval = std::stof(yytext); return F_CONSTANT; }
 
-({SP}?\"([^"\\\n]|{ES})*\"{WS}*)+	{ return check_type(); /*return S_CONSTANT*/ }
+({SP}?\"([^"\\\n]|{ES})*\"{WS}*)+	{ return check_type(1); /*return S_CONSTANT*/ }
 
 "..."					{ return ELLIPSIS; }
 ">>="					{ return RIGHT_ASSIGN; }
@@ -181,15 +181,11 @@ static void comment(void)
     yyerror("Unterminated Comment");
 }
 
-static int check_type(void)
+static int check_type(int type)
 {
-    switch (sym_type(yytext))
+    switch (type)
     {
-    case TYPEDEF_NAME:                /* previously defined */
-        return TYPEDEF_NAME;
-    case ENUMERATION_CONSTANT:        /* previously defined */
-        return ENUMERATION_CONSTANT;
-    case STRING_LITERAL:              /* previously defined */
+    case 1:              /* previously defined */
         {
             // allocate sval and copy yytext to it
             yylval.sval = new char[yyleng];
