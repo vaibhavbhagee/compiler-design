@@ -36,10 +36,10 @@ treeNode *ASTree = NULL;
 }
 
 // semantic values of terminals
-%token	<sval> IDENTIFIER 
+%token	<sval> IDENTIFIER STRING_LITERAL
 %token  <ival> I_CONSTANT 
 %token  <fval> F_CONSTANT 
-%token  STRING_LITERAL FUNC_NAME ELLIPSIS
+%token  FUNC_NAME ELLIPSIS
 %token 	SIZEOF
 %token	PTR_OP LEFT_OP RIGHT_OP 
 %token  INC_OP DEC_OP LE_OP GE_OP EQ_OP NE_OP
@@ -428,6 +428,7 @@ primary_expression
 constant
 	: I_CONSTANT /* includes character_constant */			{ConstNode *temp = new ConstNode($1); $$ = temp;}
 	| F_CONSTANT								  			{ConstNode *temp = new ConstNode($1); $$ = temp;}
+	| STRING_LITERAL								  		{ConstNode *temp = new ConstNode($1); $$ = temp;}
 	;
 
 argument_expression_list

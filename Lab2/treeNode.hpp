@@ -314,6 +314,12 @@ class ConstNode : public treeNode {
 			fval = f;
 		}
 
+		// ConstNode(char* str) {
+		// 	type = "Const";
+		// 	name = "STRING";
+		// 	sval = std::to_string(str);
+		// }
+
 		ConstNode(std::string s) {
 			type = "Const";
 			name = "STRING";

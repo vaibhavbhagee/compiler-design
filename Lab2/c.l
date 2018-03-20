@@ -103,7 +103,7 @@ static int check_type(void);
 {HP}{H}*"."{H}+{P}{FS}?			{ yylval.fval = std::stof(yytext); return F_CONSTANT; }
 {HP}{H}+"."{P}{FS}?			{ yylval.fval = std::stof(yytext); return F_CONSTANT; }
 
-({SP}?\"([^"\\\n]|{ES})*\"{WS}*)+	{ return STRING_LITERAL; }
+({SP}?\"([^"\\\n]|{ES})*\"{WS}*)+	{ return check_type(); /*return S_CONSTANT*/ }
 
 "..."					{ return ELLIPSIS; }
 ">>="					{ return RIGHT_ASSIGN; }
@@ -189,14 +189,27 @@ static int check_type(void)
         return TYPEDEF_NAME;
     case ENUMERATION_CONSTANT:        /* previously defined */
         return ENUMERATION_CONSTANT;
+    case STRING_LITERAL:              /* previously defined */
+        {
+            // allocate sval and copy yytext to it
+            yylval.sval = new char[yyleng];
+            int i = 0;
+            for (; i < yyleng; i++) {
+                yylval.sval[i] = yytext[i];
+            }
+            yylval.sval[i] = '\0';
+            return STRING_LITERAL;
+        }
     default:                         /* includes undefined */
-    // allocate sval and copy yytext to it
-    yylval.sval = new char[yyleng];
-    int i = 0;
-    for (; i < yyleng; i++) {
-        yylval.sval[i] = yytext[i];
-    }
-        yylval.sval[i] = '\0';
-        return IDENTIFIER;
+        {
+        // allocate sval and copy yytext to it
+            yylval.sval = new char[yyleng];
+            int i = 0;
+            for (; i < yyleng; i++) {
+                yylval.sval[i] = yytext[i];
+            }
+            yylval.sval[i] = '\0';
+            return IDENTIFIER;
+        }
     }
 }
