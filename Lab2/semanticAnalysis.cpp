@@ -106,7 +106,7 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 				return true;
 			}
 			else {
-				std::cout << "The function " << fname << " has a mismatched arguments in declaration and definition" << std::endl;
+				std::cout << "Error : " << "The function " << fname << " has a mismatched arguments in declaration and definition" << std::endl;
 				return false;
 			}
 		}
@@ -157,7 +157,7 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 		if (!chk) {
 			auto it = functions.find(name);
 			if (it == functions.end()) { // not declared
-				std::cout << name << " has not been declared" << std::endl;
+				std::cout << "Error : " << name << " has not been declared" << std::endl;
 				return false;
 			}
 			else {	//check no. of arguments
@@ -168,10 +168,10 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 					}
 				}
 				if (isFuncVariadic[name]) {
-					std::cout << "Warning : " << name << " is variadic and can accept any kind of argument" << std::endl;
+					std::cout << "Warning : " << name << " is variadic" << std::endl;
 					return true;
 				}
-				std::cout << name << " has been called with incorrect number of arguments" << std::endl;
+				std::cout << "Error : " << name << " has been called with incorrect number of arguments" << std::endl;
 				return false;
 			}
 		}
@@ -243,7 +243,7 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 				return (it->second).back();
 			}
 			else {
-				std::cout << name << " has been called with incorrect argument types" << std::endl;
+				std::cout << "Error : " <<  name << " has been called with incorrect argument types" << std::endl;
 				return "";
 			}
 		}
@@ -269,7 +269,7 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		}
 
 		std::string fname = ((IdentNode*)(node->children[1]->children[0]))->name;
-		std::cout << "Incorrect type of value returned from function " << fname << std::endl;
+		std::cout << "Error : " << "Incorrect type of value returned from function " << fname << std::endl;
 		return "";
 	}
 	else if (type == "RETURN") {
@@ -292,7 +292,7 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		}
 		else {
 			if (node->children[0]->type == "Ident") {
-				std::cout << "Incorrectly assigned type to " << ((IdentNode*)(node->children[0]))->name << std::endl;
+				std::cout << "Error : " << "Incorrectly assigned type to " << ((IdentNode*)(node->children[0]))->name << std::endl;
 			}
 			return "";
 		}
@@ -363,11 +363,10 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		}
 		// get the variable being dereferenced
 		treeNode* temp = node->children[0];
-		std::cout << temp->type << std::endl;
 		while (temp->type != "Ident") {
 			temp = temp->children[0];
 		}
-		std::cout << "Cannot Further Dereference " << ((IdentNode*)temp)->name << std::endl;
+		std::cout << "Error : " << "Cannot Further Dereference " << ((IdentNode*)temp)->name << std::endl;
 		return "";
 	}
 	else if (type == "CONDITION") {
@@ -388,7 +387,7 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 					}
 				}
 				else {
-					std::cout << "Dead code in block after return" << std::endl;
+					std::cout << "Error : " << "Dead code in block after return" << std::endl;
 					return "";
 				}
 				return "";
@@ -406,17 +405,17 @@ bool semanticCheck(treeNode* ASTree) {
 
   	bool chk1 = checkDeclUse(ASTree, "VOID", scopes, functions, isFuncVariadic);
   	if (!chk1) {
-  		std::cout << "Missing declarations before use" << std::endl;
+  		std::cout << "Error : Missing declarations before use" << std::endl;
   		return false;
   	}
-  	std::cout << "Identifiers are declared before use" << std::endl;
+  	std::cout << "Identifiers are declared before use" << std::endl << std::endl;
 
   	std::string chk2 = checkType(ASTree, "VOID", scopes, functions, isFuncVariadic);
   	if (chk2 == "") {
-  		std::cout << "Typing errors found" << std::endl;
+  		std::cout << "Error : Typing errors found" << std::endl;
   		return false;
   	}
-  	std::cout << "No typing errors found" << std::endl;
+  	std::cout << "No typing errors found" << std::endl << std::endl;
 
   	return true;
 }
