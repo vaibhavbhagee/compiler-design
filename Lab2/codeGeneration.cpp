@@ -16,6 +16,7 @@ LLVMModuleRef mod;
 std::stack< std::map<std::string, FUNCTION_TYPE> > funcSymTable;
 std::stack< std::map<std::string, VALUE_TYPE> > argSymTable;
 std::stack< std::map<std::string, VALUE_TYPE> > symTable;
+std::stack< std::map<std::string, VALUE_TYPE> > arrSymTable;
 
 // stack of contexts/builders - operate in concert
 std::stack<LLVMContextRef> contextStack;
@@ -50,13 +51,13 @@ VALUE_TYPE searchInTable(std::string varName,
 	}
 }
 
-LLVMTypeRef searchInArrTable(std::string varName, 
-	std::stack< std::map<std::string, LLVMTypeRef> > &symTable, bool stopFirst=false) {
+DATATYPE_TYPE searchInArrTable(std::string varName, 
+	std::stack< std::map<std::string, DATATYPE_TYPE> > &symTable, bool stopFirst=false) {
 
 	if (symTable.empty())
 		return NULL;
 
-	std::map< std::string, LLVMTypeRef> topContext = symTable.top();
+	std::map< std::string, DATATYPE_TYPE> topContext = symTable.top();
 
 	if (topContext.find(varName) != topContext.end())
 		return topContext[varName];
@@ -65,7 +66,7 @@ LLVMTypeRef searchInArrTable(std::string varName,
 			return NULL;
 		}
 		symTable.pop();
-		LLVMTypeRef found = searchInArrTable(varName, symTable);
+		DATATYPE_TYPE found = searchInArrTable(varName, symTable);
 		symTable.push(topContext);
 		return found;
 	}
@@ -82,14 +83,14 @@ FUNCTION_TYPE searchInFuncSymTable(std::string varName, std::stack< std::map<std
 	}
 }
 
-LLVMTypeRef stringToLLVMType(std::string typeName, LLVMContextRef c) {
+DATATYPE_TYPE stringToLLVMType(std::string typeName, LLVMContextRef c) {
 	if (typeName == "INT") return LLVMInt32TypeInContext(c);
 	else if (typeName == "FLOAT") return LLVMFloatTypeInContext(c);
 	else if (typeName == "VOID") return LLVMVoidTypeInContext(c);
 	else if (typeName == "CHAR") return LLVMInt8TypeInContext(c); //TODO: Check this
 	else if (typeName.find("*") != std::string::npos) {
 		typeName.pop_back();
-		LLVMTypeRef base = stringToLLVMType(typeName, c);
+		DATATYPE_TYPE base = stringToLLVMType(typeName, c);
 		return LLVMPointerType(base, 0);
 	}
 	else return NULL;
@@ -102,16 +103,29 @@ VALUE_TYPE useArray(treeNode* node, VALUE_TYPE array) {
 	// get the code for index and load if needed
 	ConstNode* indexNode = (ConstNode*)(node->children[0]->children[0]);
 	std::string ind = std::to_string(indexNode->ival);
-	LLVMValueRef index = indexNode->codegen();
+	VALUE_TYPE index = indexNode->codegen();
 	index = loadValueifNeeded(indexNode, index);
 
 	// get the name and tag
 	std::string name = ((IdentNode*)node)->name;
 	std::string tag = name + "_" + ind + "_";
 
-	// get pointer to element of array at index
-	LLVMValueRef base_ptr = LLVMBuildStructGEP(currBuilder, array, 0, tag.c_str());
-	LLVMValueRef element_ptr = LLVMBuildInBoundsGEP(currBuilder, base_ptr, &index, 1, "");
+	// Check if access made from a pointer variable or an array variable
+	VALUE_TYPE arrFoundVal = searchInTable(name, arrSymTable);
+	VALUE_TYPE base_ptr = NULL;
+	VALUE_TYPE element_ptr = NULL;
+
+	if (arrFoundVal != NULL) { // get pointer to element of array at index 
+		base_ptr = LLVMBuildStructGEP(currBuilder, array, 0, tag.c_str());
+		element_ptr = LLVMBuildInBoundsGEP(currBuilder, base_ptr, &index, 1, "");
+	}
+	else {
+		// printf("%s %s\n", "entered in pointer array access", name.c_str());
+		base_ptr = array;
+		
+		base_ptr = LLVMBuildLoad(currBuilder, array, "_load_ptr_val"); // loads the base pointer from pointer to pointer
+		element_ptr = LLVMBuildGEP(currBuilder, base_ptr, &index, 1, ""); // calculates the actual pointer of the offset
+	}
 
 	return element_ptr;
 }
@@ -123,19 +137,28 @@ VALUE_TYPE loadValueifNeeded(treeNode* node, VALUE_TYPE prev_val) {
 	// check for node variable and load accordingly
 	if (node->type == "Ident" && node->children.size() == 0) {
 
-		std::string varName = ((IdentNode*)(node))->name;
+		std::string varName = ((IdentNode*)node)->name;
+		VALUE_TYPE arrFoundVal = searchInTable(varName, arrSymTable);
 
-		// Search in variable sym table
-		VALUE_TYPE foundVal = searchInTable(varName, symTable);
-		if (foundVal != NULL) {	// Found in variable sym table
-			std::string tag = "load_" + varName + "_";
-			return LLVMBuildLoad(currBuilder, prev_val, tag.c_str());
+		if (arrFoundVal == NULL) // not an array variable
+		{
+			// Search in variable sym table
+			VALUE_TYPE foundVal = searchInTable(varName, symTable);
+			if (foundVal != NULL) {	// Found in variable sym table
+				std::string tag = "load_" + varName + "_";
+				return LLVMBuildLoad(currBuilder, prev_val, tag.c_str());
+			}
+		}
+		else { // if an array variable - likely a param to a function without [] - calculate base ptr and return
+			LLVMBuilderRef currBuilder = builderStack.top();
+			VALUE_TYPE generated_code = LLVMBuildStructGEP(currBuilder, arrFoundVal, 0, "_arr_base_ptr");
+			VALUE_TYPE indices = {LLVMConstInt(LLVMInt32TypeInContext(contextStack.top()), 0, false)};
+			return LLVMBuildGEP(currBuilder, generated_code, &indices, 1, "_arr_first_elt_ptr");	
 		}
 	}
 	//load array value
 	else if (node->type == "Ident" && node->children[0]->type == "[ ]") {
-		LLVMValueRef element_ptr_actual = useArray(node, prev_val);		
-		return LLVMBuildLoad(currBuilder, element_ptr_actual, "array_deref_");
+		return LLVMBuildLoad(currBuilder, prev_val, "array_deref_");
 	}
 	// load pointer value
 	else if (node->type == "DEREF") {
@@ -149,16 +172,26 @@ VALUE_TYPE codegenBinExp(treeNode* lhs, treeNode* rhs, LLVMOpcode Op, bool logic
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 
-	LLVMValueRef lhsVal = lhs->codegen();
+	VALUE_TYPE lhsVal = lhs->codegen();
 	lhsVal = loadValueifNeeded(lhs, lhsVal);
 	
-	LLVMValueRef rhsVal = rhs->codegen();
+	VALUE_TYPE rhsVal = rhs->codegen();
 	rhsVal = loadValueifNeeded(rhs, rhsVal);
 
 	if (LLVMGetTypeKind(LLVMTypeOf(lhsVal)) == LLVMFloatTypeKind &&
 	 LLVMGetTypeKind(LLVMTypeOf(rhsVal)) == LLVMFloatTypeKind && !logical){
 
 		return LLVMBuildBinOp(currBuilder, ((LLVMOpcode)(Op + 1)), lhsVal, rhsVal, "_flt_op");
+	}
+	else if (LLVMGetTypeKind(LLVMTypeOf(lhsVal)) == LLVMPointerTypeKind && LLVMGetTypeKind(LLVMTypeOf(rhsVal)) == LLVMIntegerTypeKind) {
+		VALUE_TYPE indices = {rhsVal};
+
+		return LLVMBuildGEP(currBuilder, lhsVal, &indices, 1, "_ptr_arith");
+	}
+	else if (LLVMGetTypeKind(LLVMTypeOf(rhsVal)) == LLVMPointerTypeKind && LLVMGetTypeKind(LLVMTypeOf(lhsVal)) == LLVMIntegerTypeKind) {
+		VALUE_TYPE indices = {lhsVal};
+
+		return LLVMBuildGEP(currBuilder, rhsVal, &indices, 1, "_ptr_arith");
 	}
 	else {
 		return LLVMBuildBinOp(currBuilder, Op, lhsVal, rhsVal, "_int_op");
@@ -169,13 +202,13 @@ VALUE_TYPE constShift(treeNode* node, ConstNode* cons, LLVMOpcode Op) {
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 
-	LLVMValueRef constVal = cons->codegen();
+	VALUE_TYPE constVal = cons->codegen();
 	std::string varName = ((IdentNode*)(node))->name;
-	LLVMValueRef Ident = node->codegen();
-	LLVMValueRef IdentVal = loadValueifNeeded(node, Ident);
+	VALUE_TYPE Ident = node->codegen();
+	VALUE_TYPE IdentVal = loadValueifNeeded(node, Ident);
 
 	std::string tag = varName + "_const_op";
-	LLVMValueRef var_incr = LLVMBuildBinOp(currBuilder, Op, IdentVal, constVal, tag.c_str());
+	VALUE_TYPE var_incr = LLVMBuildBinOp(currBuilder, Op, IdentVal, constVal, tag.c_str());
 
 	return LLVMBuildStore(currBuilder, var_incr, Ident);
 }
@@ -185,10 +218,10 @@ VALUE_TYPE codegenCondExp(treeNode* lhs, treeNode* rhs, int Op, bool logical=fal
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 
-	LLVMValueRef lhsVal = lhs->codegen();
+	VALUE_TYPE lhsVal = lhs->codegen();
 	lhsVal = loadValueifNeeded(lhs, lhsVal);
 	
-	LLVMValueRef rhsVal = rhs->codegen();
+	VALUE_TYPE rhsVal = rhs->codegen();
 	rhsVal = loadValueifNeeded(rhs, rhsVal);
 
 	if (LLVMGetTypeKind(LLVMTypeOf(lhsVal)) == LLVMFloatTypeKind &&
@@ -225,7 +258,7 @@ VALUE_TYPE treeNode::codegen() {
 
 		std::vector<std::string> fparams;
 		
-		LLVMTypeRef funcRetType = stringToLLVMType(children[0]->type, currContext);
+		DATATYPE_TYPE funcRetType = stringToLLVMType(children[0]->type, currContext);
 		FUNCTION_TYPE funcHeader = ((FunctionNode*)children[1])->codegen( true, funcRetType );
 
 		int index = 0;
@@ -236,7 +269,7 @@ VALUE_TYPE treeNode::codegen() {
 
 		argSymTable.push(newVariableMap);
 
-		LLVMBasicBlockRef entry = LLVMAppendBasicBlock(funcHeader, "entry");
+		BLOCK_TYPE entry = LLVMAppendBasicBlock(funcHeader, "entry");
 		LLVMPositionBuilderAtEnd(currBuilder, entry);
 
 		((FuncBlockNode*)children[2])->codegen( funcRetType, funcHeader );
@@ -247,7 +280,7 @@ VALUE_TYPE treeNode::codegen() {
 	}
 	else if (type == "RETURN") { //TODO: Check if you have to load here or return as is
 		
-		LLVMValueRef rhsVal = children[0]->codegen();
+		VALUE_TYPE rhsVal = children[0]->codegen();
 		rhsVal = loadValueifNeeded(children[0], rhsVal);
 
 		return rhsVal;
@@ -258,16 +291,16 @@ VALUE_TYPE treeNode::codegen() {
 			temp = temp->children[0];
 		}
 		std::string varName = ((IdentNode*)temp)->name;
-		LLVMValueRef varPlace = children[0]->codegen();
+		VALUE_TYPE varPlace = children[0]->codegen();
 
-		LLVMValueRef rhsVal = children[1]->codegen();
+		VALUE_TYPE rhsVal = children[1]->codegen();
 		rhsVal = loadValueifNeeded(children[1], rhsVal);
 
-		if (children[0]->children.size() > 0 && children[0]->children[0]->type == "[ ]") { 
-			// storage in array
-			LLVMValueRef element_ptr_actual = useArray(children[0], varPlace);
-			return LLVMBuildStore(currBuilder, rhsVal, element_ptr_actual);
-		}
+		// if (children[0]->children.size() > 0 && children[0]->children[0]->type == "[ ]") { 
+		// 	// storage in array
+		// 	VALUE_TYPE element_ptr_actual = useArray(children[0], varPlace);
+		// 	return LLVMBuildStore(currBuilder, rhsVal, element_ptr_actual);
+		// }
 		return LLVMBuildStore(currBuilder, rhsVal, varPlace); 
 	}
 
@@ -332,12 +365,12 @@ VALUE_TYPE treeNode::codegen() {
 
 	// pointer ops
 	else if (type == "DEREF") {
-		LLVMValueRef derefVal = children[0]->codegen();
+		VALUE_TYPE derefVal = children[0]->codegen();
 		derefVal = loadValueifNeeded(children[0], derefVal);
 		return derefVal;
 	}
 	else if (type == "REF") {
-		LLVMValueRef refVal = children[0]->codegen();
+		VALUE_TYPE refVal = children[0]->codegen();
 		return refVal;
 	}
 
@@ -358,7 +391,7 @@ VALUE_TYPE DeclNode::codegen(bool isGlobalContext) {
 	}
 }
 
-VALUE_TYPE InitDeclNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
+VALUE_TYPE InitDeclNode::codegen(bool isGlobalContext, DATATYPE_TYPE type) {
 	// Call children variable, array, pointer and function node codes from here
 
 	for (int i = 0; i < children.size(); ++i)
@@ -380,14 +413,14 @@ VALUE_TYPE InitDeclNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 	return NULL;
 }
 
-VALUE_TYPE getGlobalDeclaration(LLVMModuleRef mod, LLVMTypeRef type, std::string varName) {
-	LLVMValueRef allocate = LLVMAddGlobal(mod, type, varName.c_str());	
+VALUE_TYPE getGlobalDeclaration(LLVMModuleRef mod, DATATYPE_TYPE type, std::string varName) {
+	VALUE_TYPE allocate = LLVMAddGlobal(mod, type, varName.c_str());	
 	LLVMSetLinkage(allocate, LLVMCommonLinkage);
 	LLVMSetGlobalConstant(allocate, 0);
 	return allocate;
 }
 
-VALUE_TYPE getTypeZero(LLVMTypeRef type, std::string array_name="", int array_length=0) {
+VALUE_TYPE getTypeZero(DATATYPE_TYPE type, std::string array_name="", int array_length=0) {
 
 	LLVMTypeKind type_kind = LLVMGetTypeKind(type);
 	if (type_kind ==  LLVMIntegerTypeKind) {
@@ -400,22 +433,25 @@ VALUE_TYPE getTypeZero(LLVMTypeRef type, std::string array_name="", int array_le
 		return LLVMConstPointerNull(type);
 	}
 	else if (type_kind ==  LLVMArrayTypeKind) {
-		// LLVMValueRef* init_vals = new LLVMValueRef[array_length];
-		// LLVMTypeRef elem_type = searchInArrTable(array_name, arrSymTable);
+		// VALUE_TYPE* init_vals = new VALUE_TYPE[array_length];
+		// // DATATYPE_TYPE elem_type = searchInArrTable(array_name, arrSymTable);
+		// DATATYPE_TYPE elem_type = LLVMInt32Type();
 		// for (int i = 0; i < array_length; i++) {
 		// 	init_vals[i] = getTypeZero(elem_type);
 		// }
 		// return LLVMConstArray(elem_type, init_vals, array_length);
-		return NULL;
+		// // return NULL;
+		// // return LLVMConstNull(type);
+		// // return LLVMConstStruct(NULL, 0, true);
 	}
 	return NULL;
 }
 
-VALUE_TYPE VariableNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
+VALUE_TYPE VariableNode::codegen(bool isGlobalContext, DATATYPE_TYPE type) {
 
 	std::string varName = ((IdentNode*)children[0])->name;
 	if (isGlobalContext) {
-		LLVMValueRef allocate = getGlobalDeclaration(mod, type, varName.c_str());
+		VALUE_TYPE allocate = getGlobalDeclaration(mod, type, varName.c_str());
 		LLVMSetInitializer (allocate, getTypeZero(type));
 
 		// Add to the symbol table
@@ -423,59 +459,63 @@ VALUE_TYPE VariableNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 		return allocate;
 	}
 	LLVMBuilderRef currBuilder = builderStack.top();
-	LLVMValueRef allocate = LLVMBuildAlloca(currBuilder, type, varName.c_str());
+	VALUE_TYPE allocate = LLVMBuildAlloca(currBuilder, type, varName.c_str());
 
 	// Add to the symbol table
 	symTable.top()[varName] = allocate;
 	return allocate;
 }
 
-VALUE_TYPE ArrayNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
+VALUE_TYPE ArrayNode::codegen(bool isGlobalContext, DATATYPE_TYPE type) {
 
 	std::string varName = ((IdentNode*)children[0])->name;
 	int arrayLen = ((ConstNode*)children[1])->ival;
-	LLVMTypeRef arrayType = LLVMArrayType(type, arrayLen);
+	DATATYPE_TYPE arrayType = LLVMArrayType(type, arrayLen);
 
 	if (isGlobalContext) {
-		LLVMValueRef allocate = getGlobalDeclaration(mod, arrayType, varName.c_str());
+		VALUE_TYPE allocate = getGlobalDeclaration(mod, arrayType, varName.c_str());
 		LLVMSetInitializer (allocate, getTypeZero(type, varName, arrayLen));
 
 		symTable.top()[varName] = allocate;
+
+		arrSymTable.top()[varName] = allocate;
 		return allocate;
 	}
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 
 	// Trial: Get function header entry
-	LLVMBasicBlockRef curBlk = LLVMGetInsertBlock(currBuilder); // TODO: Check if this gives the current block
-	LLVMValueRef parentFuncHeader = LLVMGetBasicBlockParent(curBlk);
+	BLOCK_TYPE curBlk = LLVMGetInsertBlock(currBuilder); // TODO: Check if this gives the current block
+	VALUE_TYPE parentFuncHeader = LLVMGetBasicBlockParent(curBlk);
 
 	// TODO: Look at the third parameter
-	LLVMValueRef allocate = LLVMBuildArrayAlloca(currBuilder, arrayType, NULL /*This could probably be the function header value*/, varName.c_str());
+	VALUE_TYPE allocate = LLVMBuildArrayAlloca(currBuilder, arrayType, NULL /*This could probably be the function header value*/, varName.c_str());
 
 	symTable.top()[varName] = allocate;
+
+	arrSymTable.top()[varName] = allocate;
 
 	return allocate;	
 }
 
-VALUE_TYPE PointerNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
+VALUE_TYPE PointerNode::codegen(bool isGlobalContext, DATATYPE_TYPE type) {
 
 	// TODO: Check about address space, Default is 0
 
 	std::string childType = children[0]->type;
-	LLVMValueRef varPlace;
+	VALUE_TYPE varPlace;
 
 	if (childType == "POINTER") {
-		LLVMTypeRef pointerType = LLVMPointerType(type, 0);
+		DATATYPE_TYPE pointerType = LLVMPointerType(type, 0);
 		varPlace = ((PointerNode*)children[0])->codegen(isGlobalContext, pointerType);
 	}
 	else if (childType == "VARIABLE") {
-		LLVMTypeRef pointerType = LLVMPointerType(type, 0);
+		DATATYPE_TYPE pointerType = LLVMPointerType(type, 0);
 		varPlace = ((VariableNode*)children[0])->codegen(isGlobalContext, pointerType);	
 	}
 	else // FUNCTION
 	{
-		LLVMTypeRef pointerType = LLVMPointerType(type, 0);
+		DATATYPE_TYPE pointerType = LLVMPointerType(type, 0);
 		return ((FunctionNode*)children[0])->codegen(isGlobalContext, pointerType);
 	}
 	LLVMSetAlignment(varPlace, 8);
@@ -490,7 +530,14 @@ VALUE_TYPE IdentNode::codegen() {
 	VALUE_TYPE foundVal = searchInTable(identName, symTable);
 
 	if (foundVal != NULL) {	// Found in variable sym table
-		return foundVal;
+		// printf("%s\n", identName.c_str());
+		if (children.size() == 0) { // variable and hence return the value
+			return foundVal;
+		}
+		else { // should be an array access
+
+			return useArray(this, foundVal);
+		}
 	}
 
 	// Search in function args - only the first level
@@ -510,7 +557,7 @@ VALUE_TYPE IdentNode::codegen() {
 			if (children.size() == 0) {
 				// Func takes no args
 
-				LLVMValueRef *temp;
+				VALUE_TYPE *temp;
 
 				std::string tag = identName + "_ret_";
 				return LLVMBuildCall(currBuilder, foundInFunc, temp, 0, tag.c_str());
@@ -518,11 +565,10 @@ VALUE_TYPE IdentNode::codegen() {
 			else {
 				// Function takes args
 
-				std::vector<LLVMValueRef> codeForIdents;
+				std::vector<VALUE_TYPE> codeForIdents;
 
 				for(auto child: children[0]->children) { // TODO: ADD LOAD RELATED INFO HERE AS WELL
-					LLVMValueRef generated_code = child->codegen();
-
+					VALUE_TYPE generated_code = child->codegen();
 					generated_code = loadValueifNeeded(child, generated_code);
 					codeForIdents.push_back(generated_code);
 				}
@@ -552,13 +598,13 @@ VALUE_TYPE ConstNode::codegen() {
 		temp_sval = temp_sval.substr(1);
 
 		LLVMBuilderRef currBuilder = builderStack.top();
-		LLVMValueRef array = LLVMBuildGlobalStringPtr(currBuilder, temp_sval.c_str(), "const_string");
+		VALUE_TYPE array = LLVMBuildGlobalStringPtr(currBuilder, temp_sval.c_str(), "const_string");
 
 		return array;
 	}
 }
 
-FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
+FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, DATATYPE_TYPE type) {
 
 	std::string funcName = ((IdentNode*)children[0])->name;
 
@@ -571,9 +617,9 @@ FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 
 	if (childType == "VOID") {
 		// Return a function with no params
-		LLVMTypeRef param_types[] = {};
-	    LLVMTypeRef retType = LLVMFunctionType(type, param_types, 0, 0);
-	    LLVMValueRef funcDecl = LLVMAddFunction(mod, funcName.c_str(), retType);
+		DATATYPE_TYPE param_types[] = {};
+	    DATATYPE_TYPE retType = LLVMFunctionType(type, param_types, 0, 0);
+	    VALUE_TYPE funcDecl = LLVMAddFunction(mod, funcName.c_str(), retType);
 
 	    // Add to function symbol table
 	    funcSymTable.top()[funcName] = funcDecl;
@@ -581,7 +627,7 @@ FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 	    return funcDecl;
 	}
 	else {
-		std::vector<LLVMTypeRef> fparams;
+		std::vector<DATATYPE_TYPE> fparams;
 		LLVMContextRef currContext = contextStack.top();
 		bool isVariadic = ((ParamNode*)children[1])->isVariadic;
 
@@ -590,10 +636,10 @@ FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 			fparams.push_back(stringToLLVMType(childType, currContext));
 		}
 
-		LLVMTypeRef* paramTypeList = fparams.data();
+		DATATYPE_TYPE* paramTypeList = fparams.data();
 
-		LLVMTypeRef retType = LLVMFunctionType(type, paramTypeList, fparams.size(), isVariadic);
-	    LLVMValueRef funcDecl = LLVMAddFunction(mod, funcName.c_str(), retType);
+		DATATYPE_TYPE retType = LLVMFunctionType(type, paramTypeList, fparams.size(), isVariadic);
+	    VALUE_TYPE funcDecl = LLVMAddFunction(mod, funcName.c_str(), retType);
 
 	    // Add to function symbol table
 	    funcSymTable.top()[funcName] = funcDecl;
@@ -602,33 +648,33 @@ FUNCTION_TYPE FunctionNode::codegen(bool isGlobalContext, LLVMTypeRef type) {
 	}
 }
 
-VALUE_TYPE BranchNode::codegen(LLVMTypeRef retType) {
+VALUE_TYPE BranchNode::codegen(DATATYPE_TYPE retType) {
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 	LLVMContextRef currContext = contextStack.top();
 
-	LLVMBasicBlockRef curBlk = LLVMGetInsertBlock(currBuilder); // TODO: Check if this gives the current block
-	LLVMValueRef parentFuncHeader = LLVMGetBasicBlockParent(curBlk);
+	BLOCK_TYPE curBlk = LLVMGetInsertBlock(currBuilder); // TODO: Check if this gives the current block
+	VALUE_TYPE parentFuncHeader = LLVMGetBasicBlockParent(curBlk);
 
 	if (type == "IF") {
 
-		LLVMBasicBlockRef endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
-		LLVMBasicBlockRef then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
+		BLOCK_TYPE endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
+		BLOCK_TYPE then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
 
 		LLVMPositionBuilderAtEnd(currBuilder, then_blk); // generated code for then
 		((CondBlockNode*)children[1])->codegen(retType, endif);
 
 		LLVMPositionBuilderAtEnd(currBuilder, curBlk); // add to the current block
-		LLVMValueRef conditionCode = children[0]->codegen(); // generated code for if
+		VALUE_TYPE conditionCode = children[0]->codegen(); // generated code for if
 		LLVMBuildCondBr(currBuilder, conditionCode, then_blk, endif);		
 
 		LLVMPositionBuilderAtEnd(currBuilder, endif); // add to the endif block
 	}
 	else if (type == "ITE") {
 
-		LLVMBasicBlockRef endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
-		LLVMBasicBlockRef then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
-		LLVMBasicBlockRef else_blk = LLVMAppendBasicBlock(parentFuncHeader, "else"); // basic block for else
+		BLOCK_TYPE endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
+		BLOCK_TYPE then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
+		BLOCK_TYPE else_blk = LLVMAppendBasicBlock(parentFuncHeader, "else"); // basic block for else
 
 		LLVMPositionBuilderAtEnd(currBuilder, then_blk); // generated code for then
 		((CondBlockNode*)children[1])->codegen(retType, endif);
@@ -637,16 +683,16 @@ VALUE_TYPE BranchNode::codegen(LLVMTypeRef retType) {
 		((CondBlockNode*)children[2])->codegen(retType, endif);
 
 		LLVMPositionBuilderAtEnd(currBuilder, curBlk); // add to the current block
-		LLVMValueRef conditionCode = children[0]->codegen(); // generated code for if
+		VALUE_TYPE conditionCode = children[0]->codegen(); // generated code for if
 		LLVMBuildCondBr(currBuilder, conditionCode, then_blk, else_blk);		
 
 		LLVMPositionBuilderAtEnd(currBuilder, endif); // add to the endif block
 	}
 	else if (type == "WHILE") {
 
-		LLVMBasicBlockRef endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
-		LLVMBasicBlockRef then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
-		LLVMBasicBlockRef else_blk = LLVMAppendBasicBlock(parentFuncHeader, "else"); // basic block for else
+		BLOCK_TYPE endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
+		BLOCK_TYPE then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
+		BLOCK_TYPE else_blk = LLVMAppendBasicBlock(parentFuncHeader, "else"); // basic block for else
 
 		// jump to the else block first
 		LLVMBuildBr(currBuilder, else_blk);
@@ -655,16 +701,16 @@ VALUE_TYPE BranchNode::codegen(LLVMTypeRef retType) {
 		((CondBlockNode*)children[1])->codegen(retType, else_blk); // goes back to the if condition again
 
 		LLVMPositionBuilderAtEnd(currBuilder, else_blk); // add to the else block
-		LLVMValueRef conditionCode = children[0]->codegen(); // generated code for if
+		VALUE_TYPE conditionCode = children[0]->codegen(); // generated code for if
 		LLVMBuildCondBr(currBuilder, conditionCode, then_blk, endif);		
 
 		LLVMPositionBuilderAtEnd(currBuilder, endif); // add to the endif block
 	}
 	else if (type == "DO-WHILE") {
 
-		LLVMBasicBlockRef endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
-		LLVMBasicBlockRef then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
-		LLVMBasicBlockRef else_blk = LLVMAppendBasicBlock(parentFuncHeader, "else"); // basic block for else
+		BLOCK_TYPE endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
+		BLOCK_TYPE then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
+		BLOCK_TYPE else_blk = LLVMAppendBasicBlock(parentFuncHeader, "else"); // basic block for else
 
 		// jump to the then block first
 		LLVMBuildBr(currBuilder, then_blk);
@@ -673,7 +719,7 @@ VALUE_TYPE BranchNode::codegen(LLVMTypeRef retType) {
 		((CondBlockNode*)children[0])->codegen(retType, else_blk); // goes back to the if condition again
 
 		LLVMPositionBuilderAtEnd(currBuilder, else_blk); // add to the else block
-		LLVMValueRef conditionCode = children[1]->codegen(); // generated code for if
+		VALUE_TYPE conditionCode = children[1]->codegen(); // generated code for if
 		LLVMBuildCondBr(currBuilder, conditionCode, then_blk, endif);		
 
 		LLVMPositionBuilderAtEnd(currBuilder, endif); // add to the endif block
@@ -684,10 +730,10 @@ VALUE_TYPE BranchNode::codegen(LLVMTypeRef retType) {
 		children[0]->codegen();
 
 		// Now code for the actual loop
-		LLVMBasicBlockRef endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
-		LLVMBasicBlockRef then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
-		LLVMBasicBlockRef else_blk = LLVMAppendBasicBlock(parentFuncHeader, "else"); // basic block for else
-		LLVMBasicBlockRef increment_blk = LLVMAppendBasicBlock(parentFuncHeader, "increment"); // basic block for increment
+		BLOCK_TYPE endif = LLVMAppendBasicBlock(parentFuncHeader, "endif"); // basic block for endif
+		BLOCK_TYPE then_blk = LLVMAppendBasicBlock(parentFuncHeader, "then"); // basic block for then
+		BLOCK_TYPE else_blk = LLVMAppendBasicBlock(parentFuncHeader, "else"); // basic block for else
+		BLOCK_TYPE increment_blk = LLVMAppendBasicBlock(parentFuncHeader, "increment"); // basic block for increment
 
 		// jump to the else block first
 		LLVMBuildBr(currBuilder, else_blk);
@@ -696,7 +742,7 @@ VALUE_TYPE BranchNode::codegen(LLVMTypeRef retType) {
 		((CondBlockNode*)children[3])->codegen(retType, increment_blk); // goes back to the if condition again
 
 		LLVMPositionBuilderAtEnd(currBuilder, else_blk); // add to the else block
-		LLVMValueRef conditionCode = children[1]->codegen(); // generated code for if
+		VALUE_TYPE conditionCode = children[1]->codegen(); // generated code for if
 		LLVMBuildCondBr(currBuilder, conditionCode, then_blk, endif);	
 
 		LLVMPositionBuilderAtEnd(currBuilder, increment_blk); // add to the increment block
@@ -709,7 +755,7 @@ VALUE_TYPE BranchNode::codegen(LLVMTypeRef retType) {
 	return NULL;
 }
 
-void callBlockInst(treeNode* t, LLVMBuilderRef currBuilder, LLVMTypeRef retType) {
+void callBlockInst(treeNode* t, LLVMBuilderRef currBuilder, DATATYPE_TYPE retType) {
 	for (int i = 0; i < t->children.size(); ++i) {
 		std::string childType = t->children[i]->type;
 
@@ -738,33 +784,41 @@ void callBlockInst(treeNode* t, LLVMBuilderRef currBuilder, LLVMTypeRef retType)
 	}
 }
 
-VALUE_TYPE FuncBlockNode::codegen(LLVMTypeRef retType, LLVMValueRef funcHeader) {
-
+void pushSymTables() {
 	std::map<std::string, VALUE_TYPE> varMap;
-	std::map<std::string, LLVMTypeRef> arrMap;
+	std::map<std::string, VALUE_TYPE> arrMap;
 	symTable.push(varMap);
+	arrSymTable.push(arrMap);
+}
+
+void popSymTables() {
+	symTable.pop();
+	arrSymTable.pop();
+}
+
+VALUE_TYPE FuncBlockNode::codegen(DATATYPE_TYPE retType, VALUE_TYPE funcHeader) {
+
+	pushSymTables();
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 	LLVMContextRef currContext = contextStack.top();
 	callBlockInst((treeNode*)this, currBuilder, retType);
 
-	symTable.pop();
+	popSymTables();
 
 	return NULL;
 }
 
-VALUE_TYPE CondBlockNode::codegen(LLVMTypeRef retTypeIfReqd, LLVMBasicBlockRef afterDest) {
+VALUE_TYPE CondBlockNode::codegen(DATATYPE_TYPE retTypeIfReqd, BLOCK_TYPE afterDest) {
 
-	std::map<std::string, VALUE_TYPE> varMap;
-	std::map<std::string, LLVMTypeRef> arrMap;
-	symTable.push(varMap);
+	pushSymTables();
 
 	LLVMBuilderRef currBuilder = builderStack.top();
 	LLVMContextRef currContext = contextStack.top();
 	callBlockInst((treeNode*)this, currBuilder, retTypeIfReqd);
 	LLVMBuildBr(currBuilder, afterDest);
 
-	symTable.pop();
+	popSymTables();
 
 	return NULL;
 }
@@ -773,13 +827,14 @@ void codegen(treeNode* AST) {
 	LLVMContextRef globalContext = LLVMGetGlobalContext();
 	LLVMBuilderRef globalBuilder = LLVMCreateBuilderInContext(globalContext);
 	std::map<std::string, VALUE_TYPE> variableMap;
-	std::map<std::string, LLVMTypeRef> arrTypeMap;
+	std::map<std::string, VALUE_TYPE> arrValMap;
 	std::map<std::string, VALUE_TYPE> argsMap;
 	std::map<std::string, FUNCTION_TYPE> functionMap;
 
 	contextStack.push(globalContext);
 	builderStack.push(globalBuilder);
 	symTable.push(variableMap);
+	arrSymTable.push(arrValMap);
 	argSymTable.push(argsMap);
 	funcSymTable.push(functionMap);
 
@@ -804,6 +859,7 @@ void codegen(treeNode* AST) {
 	contextStack.pop();
 	builderStack.pop();
 	symTable.pop();
+	arrSymTable.pop();
 	argSymTable.pop();
 	funcSymTable.pop();
 

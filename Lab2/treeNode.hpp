@@ -57,7 +57,7 @@ class DeclNode : public treeNode {
 
 class InitDeclNode : public treeNode {
 	public:
-		VALUE_TYPE codegen(bool isGlobalContext, LLVMTypeRef type);
+		VALUE_TYPE codegen(bool isGlobalContext, DATATYPE_TYPE type);
 
 		InitDeclNode() {
 			type = "";
@@ -80,7 +80,7 @@ class InitDeclNode : public treeNode {
 
 class VariableNode : public treeNode {
 	public:
-		VALUE_TYPE codegen(bool isGlobalContext, LLVMTypeRef type);
+		VALUE_TYPE codegen(bool isGlobalContext, DATATYPE_TYPE type);
 
 		VariableNode() {
 			type = "";
@@ -103,7 +103,7 @@ class VariableNode : public treeNode {
 
 class PointerNode : public treeNode {
 	public:
-		VALUE_TYPE codegen(bool isGlobalContext, LLVMTypeRef type);
+		VALUE_TYPE codegen(bool isGlobalContext, DATATYPE_TYPE type);
 
 		PointerNode() {
 			type = "";
@@ -126,7 +126,7 @@ class PointerNode : public treeNode {
 
 class ArrayNode : public treeNode {
 	public:
-		VALUE_TYPE codegen(bool isGlobalContext, LLVMTypeRef type);
+		VALUE_TYPE codegen(bool isGlobalContext, DATATYPE_TYPE type);
 
 		ArrayNode() {
 			type = "";
@@ -149,7 +149,7 @@ class ArrayNode : public treeNode {
 
 class FunctionNode : public treeNode {
 	public:
-		FUNCTION_TYPE codegen(bool isGlobalContext, LLVMTypeRef type);
+		FUNCTION_TYPE codegen(bool isGlobalContext, DATATYPE_TYPE type);
 
 		FunctionNode() {
 			type = "";
@@ -207,7 +207,7 @@ class ParamNode : public treeNode {
 
 class BranchNode : public treeNode {
 	public:
-		VALUE_TYPE codegen(LLVMTypeRef retType);
+		VALUE_TYPE codegen(DATATYPE_TYPE retType);
 
 		BranchNode() {
 			type = "";
@@ -235,7 +235,7 @@ class BranchNode : public treeNode {
 
 class FuncBlockNode : public treeNode {
 	public:
-		VALUE_TYPE codegen(LLVMTypeRef retType, LLVMValueRef funcHeader);
+		VALUE_TYPE codegen(DATATYPE_TYPE retType, VALUE_TYPE funcHeader);
 
 		FuncBlockNode() {
 			type = "";
@@ -263,7 +263,7 @@ class FuncBlockNode : public treeNode {
 
 class CondBlockNode : public treeNode {
 	public:
-		VALUE_TYPE codegen(LLVMTypeRef retTypeIfReqd, LLVMBasicBlockRef afterDest); 
+		VALUE_TYPE codegen(DATATYPE_TYPE retTypeIfReqd, BLOCK_TYPE afterDest); 
 
 		CondBlockNode() {
 			type = "";

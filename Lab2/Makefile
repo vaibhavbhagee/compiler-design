@@ -11,5 +11,22 @@ c.tab.cpp c.tab.hpp: c.y
 c.lex.cpp: c.l c.tab.hpp
 	flex -o c.lex.cpp -l c.l
 
+tests: cc
+	./cc tests/sel_sort.c
+	lli generated_code.txt
+	rm generated_code.txt
+
+	./cc tests/sel_sort_monolithic.c
+	lli generated_code.txt
+	rm generated_code.txt
+
+	./cc tests/fib_recursive.c
+	lli generated_code.txt
+	rm generated_code.txt
+
+	./cc tests/array_try.c
+	lli generated_code.txt
+	rm generated_code.txt
+
 clean::
 	rm -f c.tab.cpp c.tab.hpp c.lex.cpp cc c.output code.txt
