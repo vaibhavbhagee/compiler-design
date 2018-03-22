@@ -39,6 +39,7 @@ bool matchFuncArgs(std::vector<std::string> def_params, std::vector<treeNode*> g
 
 	for (int i = 0; i < given_params.size(); i++) {
 		if (def_params[i] != given_params[i]->children[0]->type) {
+			std::cout << def_params[i] << given_params[i] << std::endl;
 			chk2 = false;
 			break;
 		}
@@ -55,6 +56,7 @@ bool matchFuncUseArgs(std::vector<std::string> def_params, std::vector<std::stri
 
 	for (int i = 0; i < given_params.size(); i++) {
 		if (def_params[i] != given_params[i]) {
+			std::cout << def_params[i] << given_params[i] << std::endl;
 			chk2 = false;
 			break;
 		}
@@ -63,7 +65,7 @@ bool matchFuncUseArgs(std::vector<std::string> def_params, std::vector<std::stri
 }
 	
 bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scopes,
- std::unordered_map<std::string, std::vector<std::string> > &functions, 
+ std::stack<scope> &arrays, std::unordered_map<std::string, std::vector<std::string> > &functions, 
  std::unordered_map<std::string,bool> &isFuncVariadic) {
 	
 	if (node == NULL) {
@@ -72,17 +74,17 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 
 	std::string type = node->type;
 	if (type == "decl") {
-		return checkDeclUse(node->children[1], node->children[0]->type, scopes, functions, isFuncVariadic);
+		return checkDeclUse(node->children[1], node->children[0]->type, scopes, arrays, functions, isFuncVariadic);
 	}
 	else if (type == "VARIABLE") {
 		scopes.top().add_symbol(((IdentNode*)(node->children[0]))->name, curr_type);
 		return true;
 	}
 	else if (type == "POINTER") {
-		return checkDeclUse(node->children[0], curr_type + "*", scopes, functions, isFuncVariadic);
+		return checkDeclUse(node->children[0], curr_type + "*", scopes, arrays, functions, isFuncVariadic);
 	}
 	else if (type == "ARRAY") {
-		scopes.top().add_symbol(((IdentNode*)(node->children[0]))->name, curr_type, ((ConstNode*)(node->children[1]))->ival);
+		arrays.top().add_symbol(((IdentNode*)(node->children[0]))->name, curr_type, ((ConstNode*)(node->children[1]))->ival);
 		return true;
 	}
 	else if (type == "FUNCTION") {
@@ -124,27 +126,27 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 			node->children[1] = temp;
 		}
 
-		bool isDeclared = checkDeclUse(node->children[1], node->children[0]->type, scopes, functions, isFuncVariadic);
+		bool isDeclared = checkDeclUse(node->children[1], node->children[0]->type, scopes, arrays, functions, isFuncVariadic);
 		/* 
 		   now if signatures match/ or function not declared before, 
 		   the argument list of function should have argument types,
 		   and identifiers, which are put into current scope
 		*/
 		scopes.push(expandScope(scopes.top(), node));
+		bool chk = isDeclared && checkDeclUse(node->children[2], curr_type, scopes, arrays, functions, isFuncVariadic);
+		scopes.pop();
 
-		bool chk = isDeclared && checkDeclUse(node->children[2], curr_type, scopes, functions, isFuncVariadic);
-		scopes.pop(); 
 		return chk;
 	}
 	else if (type == "WHILE") {
 		scopes.push(scope(&scopes.top()));
-		bool chk = checkDeclUse(node->children[1], curr_type, scopes, functions, isFuncVariadic);
+		bool chk = checkDeclUse(node->children[1], curr_type, scopes, arrays, functions, isFuncVariadic);
 		scopes.pop();
 		return chk;
 	}
 	else if (type == "DO-WHILE") {
 		scopes.push(scope(&scopes.top()));
-		bool chk = checkDeclUse(node->children[0], curr_type, scopes, functions, isFuncVariadic);
+		bool chk = checkDeclUse(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
 		scopes.pop();
 		return chk;
 	}
@@ -153,8 +155,19 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 		std::string name = ((IdentNode*)(node))->name;
 		bool chk = scopes.top().check_scope(name);
 
-		// for function
+		// for array or function
 		if (!chk) {
+			// for array
+			bool chk = arrays.top().check_scope(name);
+			if (chk) {
+				bool chk2 = true;
+				if (node->children.size() > 0) { // if array element, check index
+					chk2 = checkDeclUse(node->children[0]->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
+				}
+				return chk2;
+			}
+
+			// for functions
 			auto it = functions.find(name);
 			if (it == functions.end()) { // not declared
 				std::cout << "Error : " << name << " has not been declared" << std::endl;
@@ -164,7 +177,7 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 				if (node->children.size()){ // in case of no args
 					int numargs = node->children[0]->children.size();
 					if (it->second.size() - 1 == numargs) { // correct number of args
-						return checkDeclUse(node->children[0], curr_type, scopes, functions, isFuncVariadic);
+						return checkDeclUse(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
 					}
 				}
 				if (isFuncVariadic[name]) {
@@ -181,20 +194,35 @@ bool checkDeclUse(treeNode* node, std::string curr_type, std::stack<scope> &scop
 		return true;
 	}
 	else {
+		// push in new scope
 		if (type == "start") {
 			scope new_scope = scope();
+			scope new_arr_scope = scope();
 			scopes.push(new_scope);
+			arrays.push(new_arr_scope);
 		}
+		else if (type == "BLOCK"){
+			scope new_scope = scope(&scopes.top());
+			scope new_arr_scope = scope(&arrays.top());
+			scopes.push(new_scope);
+			arrays.push(new_arr_scope);
+		}
+
 		bool res = true;
 		for (auto child : node->children) {
-			res &= checkDeclUse(child, curr_type, scopes, functions, isFuncVariadic);
+			res &= checkDeclUse(child, curr_type, scopes, arrays, functions, isFuncVariadic);
+		}
+
+		if (type == "BLOCK"){
+			scopes.pop();
+			arrays.pop();
 		}
 		return res;
 	}
 }
 
 std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &scopes,
- std::unordered_map<std::string, std::vector<std::string> > &functions,
+	std::stack<scope> &arrays, std::unordered_map<std::string, std::vector<std::string> > &functions,
  std::unordered_map<std::string,bool> &isFuncVariadic) {
 
 	/*
@@ -208,17 +236,17 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 
 	std::string type = node->type;
 	if (type == "decl") {
-		return checkType(node->children[1], node->children[0]->type, scopes, functions, isFuncVariadic);
+		return checkType(node->children[1], node->children[0]->type, scopes, arrays, functions, isFuncVariadic);
 	}
 	else if (type == "VARIABLE") {
 		scopes.top().add_symbol(((IdentNode*)(node->children[0]))->name, curr_type);
 		return "VOID";
 	}
 	else if (type == "POINTER") {
-		return checkType(node->children[0], curr_type + "*", scopes, functions, isFuncVariadic);
+		return checkType(node->children[0], curr_type + "*", scopes, arrays, functions, isFuncVariadic);
 	}
 	else if (type == "ARRAY") {
-		scopes.top().add_symbol(((IdentNode*)(node->children[0]))->name, curr_type, ((ConstNode*)(node->children[1]))->ival);
+		arrays.top().add_symbol(((IdentNode*)(node->children[0]))->name, curr_type, ((ConstNode*)(node->children[1]))->ival);
 		return "VOID";
 	}
 	else if (type == "Ident") {
@@ -226,16 +254,44 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		std::string name = ((IdentNode*)(node))->name;
 		bool chk = scopes.top().check_scope(name);
 
-		// for function
+		// for arrays and functions
 		if (!chk) {
+
+			// for array
+			bool chk = arrays.top().check_scope(name);
+			if (chk) {
+				if (node->children.size() > 0) {
+					std::string index = checkType(node->children[0]->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
+					if (index == "INT") {
+						return arrays.top().find_symbol_type(((IdentNode*)(node))->name);
+					}
+					else {
+						std::cout << "Error : Indexing into " << name << "with non-integer value" << std::endl;
+					}
+				}
+				else {
+					return arrays.top().find_symbol_type(((IdentNode*)(node))->name);
+				}
+				std::cout << "Error : Cant read array without index" << std::endl;
+				return "";
+			}
+
 			auto it = functions.find(name);
 			/* 
 				since decl before use is checked, we assume function is defined
 				check argument types and get the last args - return type
 			*/
 			std::vector<std::string> given_params;
-			for (auto child : node->children[0]->children) { 
-				given_params.push_back(checkType(child, curr_type, scopes, functions, isFuncVariadic));
+			for (auto child : node->children[0]->children) {
+				std::string childType = checkType(child, curr_type, scopes, arrays, functions, isFuncVariadic);
+				// check for enitre array passed
+				if (child->type == "Ident" && child->children.size() == 0) {
+					bool chk3 = arrays.top().check_scope(((IdentNode*)(child))->name);
+					if (chk3) {
+						childType += "*";
+					}
+				}
+				given_params.push_back(childType);				
 			}
 
 			bool chk2 = matchFuncUseArgs(it->second, given_params);
@@ -261,8 +317,8 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		std::string ret_type = node->children[0]->type;
 
 		scopes.push(expandScope(scopes.top(), node));
-		std::string block_ret = checkType(node->children[2], ret_type, scopes, functions, isFuncVariadic);
-		scopes.pop(); 
+		std::string block_ret = checkType(node->children[2], ret_type, scopes, arrays, functions, isFuncVariadic);
+		scopes.pop();
 
 		if (ret_type == "VOID" || block_ret == "RETURN") {
 			return "VOID";
@@ -274,7 +330,7 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 	}
 	else if (type == "RETURN") {
 		if (node->children.size()) {
-			return checkType(node->children[0], curr_type, scopes, functions, isFuncVariadic);
+			return checkType(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
 		}
 		return "VOID";
 	}
@@ -282,8 +338,8 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		return ((ConstNode*)(node))->name;
 	}
 	else if (type == "ASSIGN") {
-		std::string lhs = checkType(node->children[0], curr_type, scopes, functions, isFuncVariadic);
-		std::string rhs = checkType(node->children[1], curr_type, scopes, functions, isFuncVariadic);
+		std::string lhs = checkType(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
+		std::string rhs = checkType(node->children[1], curr_type, scopes, arrays, functions, isFuncVariadic);
 		if (lhs == rhs) {
 			return "VOID";
 		}
@@ -298,12 +354,12 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		}
 	}
 	else if (type == "INC" || type == "DEC") {
-		std::string rhs = checkType(node->children[0], curr_type, scopes, functions, isFuncVariadic);
+		std::string rhs = checkType(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
 		return (rhs == "INT")?"VOID":"";
 	}
 	else if (type == "PLUS" || type == "MINUS" || type == "MULT" || type == "DIV" || type == "MOD") {
-		std::string lhs = checkType(node->children[0], curr_type, scopes, functions, isFuncVariadic);
-		std::string rhs = checkType(node->children[1], curr_type, scopes, functions, isFuncVariadic);
+		std::string lhs = checkType(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
+		std::string rhs = checkType(node->children[1], curr_type, scopes, arrays, functions, isFuncVariadic);
 		if (lhs == "INT" && rhs == lhs) {
 			return "INT";
 		}
@@ -327,8 +383,8 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		}
 	}
 	else if (type == "OR" || type == "AND" || type == "XOR") {
-		std::string lhs = checkType(node->children[0], curr_type, scopes, functions, isFuncVariadic);
-		std::string rhs = checkType(node->children[1], curr_type, scopes, functions, isFuncVariadic);
+		std::string lhs = checkType(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
+		std::string rhs = checkType(node->children[1], curr_type, scopes, arrays, functions, isFuncVariadic);
 		if (lhs == "BOOL" && rhs == lhs) {
 			return "BOOL";
 		}
@@ -337,25 +393,25 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		}
 	}
 	else if (type == "EQ" || type == "NEQ") {
-		std::string lhs = checkType(node->children[0], curr_type, scopes, functions, isFuncVariadic);
-		std::string rhs = checkType(node->children[1], curr_type, scopes, functions, isFuncVariadic);
+		std::string lhs = checkType(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
+		std::string rhs = checkType(node->children[1], curr_type, scopes, arrays, functions, isFuncVariadic);
 		return (lhs == rhs)?"BOOL":"";
 	}
 	else if (type == "LT" || type == "GT" || type == "LEQ" || type == "GEQ" ) {
-		std::string lhs = checkType(node->children[0], curr_type, scopes, functions, isFuncVariadic);
-		std::string rhs = checkType(node->children[1], curr_type, scopes, functions, isFuncVariadic);
+		std::string lhs = checkType(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
+		std::string rhs = checkType(node->children[1], curr_type, scopes, arrays, functions, isFuncVariadic);
 		return (lhs == rhs)?"BOOL":"";
 	}
 	else if (type == "NOT") {
-		std::string lhs = checkType(node->children[0], curr_type, scopes, functions, isFuncVariadic);
+		std::string lhs = checkType(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
 		return (lhs == "INT" | lhs == "BOOL")?"BOOL":"";
 	}
 	else if (type == "REF") {
-		std::string lhs = checkType(node->children[0], curr_type, scopes, functions, isFuncVariadic);
+		std::string lhs = checkType(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
 		return (lhs + "*");
 	}
 	else if (type == "DEREF") {
-		std::string lhs = checkType(node->children[0], curr_type, scopes, functions, isFuncVariadic);
+		std::string lhs = checkType(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
 		if (lhs.find("*") != std::string::npos) {
 			// a pointer is dereferenced
 			lhs.pop_back();
@@ -370,49 +426,66 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		return "";
 	}
 	else if (type == "CONDITION") {
-		std::string cond = checkType(node->children[0], curr_type, scopes, functions, isFuncVariadic);
+		std::string cond = checkType(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
 		return (cond == "BOOL")?"VOID":"";
 	}
 	else {
+		// push in new scope
+		if (type == "BLOCK"){
+			scope new_scope = scope(&scopes.top());
+			scope new_arr_scope = scope(&arrays.top());
+			scopes.push(new_scope);
+			arrays.push(new_arr_scope);
+		}
+
+		std::string retVal = "VOID";
+
 		for (int i = 0; i < node->children.size(); i++) {
 			auto child = node->children[i];
-			std::string typ = checkType(child, curr_type, scopes, functions, isFuncVariadic);
+			std::string typ = checkType(child, curr_type, scopes, arrays, functions, isFuncVariadic);
 			if (typ == "") {
-				return "";
+				retVal = "";
+				break;
 			}
 			if (type == "BLOCK" && child->type == "RETURN") {
 				if (i == node->children.size() - 1) { // return is last in block
 					if (curr_type == typ) {			  // return type matches function def
-						return "RETURN";
+						retVal = "RETURN";
+						break;
 					}
 				}
 				else {
 					std::cout << "Error : " << "Dead code in block after return" << std::endl;
-					return "";
+					retVal = "";
+					break;
 				}
 				return "";
+				break;
 			}
 		}
-		return "VOID";
+		if (type == "BLOCK") {
+			scopes.pop();
+			arrays.pop();
+		}
+		return retVal;
 	}
 }
 
 bool semanticCheck(treeNode* ASTree) {
 
-	return true;
-
 	std::stack<scope> scopes;
+	std::stack<scope> arrays;
   	std::unordered_map<std::string, std::vector<std::string> > functions;
   	std::unordered_map<std::string, bool > isFuncVariadic;
 
-  	bool chk1 = checkDeclUse(ASTree, "VOID", scopes, functions, isFuncVariadic);
+  	bool chk1 = checkDeclUse(ASTree, "VOID", scopes, arrays, functions, isFuncVariadic);
   	if (!chk1) {
   		std::cout << "Error : Missing declarations before use" << std::endl;
   		return false;
   	}
-  	std::cout << "Identifiers are declared before use" << std::endl << std::endl;
+  	std::cout << "Identifiers are declared before use" << std::endl;
 
-  	std::string chk2 = checkType(ASTree, "VOID", scopes, functions, isFuncVariadic);
+  	std::string chk2 = checkType(ASTree, "VOID", scopes, arrays, functions, isFuncVariadic);
   	if (chk2 == "") {
   		std::cout << "Error : Typing errors found" << std::endl;
   		return false;
