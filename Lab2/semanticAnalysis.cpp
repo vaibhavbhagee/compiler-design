@@ -372,10 +372,10 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		else if (lhs == "FLOAT" && rhs == lhs) {
 			return "FLOAT";
 		}
-		else if (lhs.find("*") != std::string::npos && rhs == "INT") {
+		else if (lhs.find("*") != std::string::npos && rhs == "INT" && (type == "PLUS" || type == "MINUS")) {
 			return lhs;
 		}
-		else if (rhs.find("*") != std::string::npos && lhs == "INT") {
+		else if (rhs.find("*") != std::string::npos && lhs == "INT" && (type == "PLUS" || type == "MINUS")) {
 			return rhs;
 		}
 		else {
@@ -400,7 +400,11 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 	else if (type == "LT" || type == "GT" || type == "LEQ" || type == "GEQ" ) {
 		std::string lhs = checkType(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
 		std::string rhs = checkType(node->children[1], curr_type, scopes, arrays, functions, isFuncVariadic);
-		return (lhs == rhs)?"BOOL":"";
+
+		if (lhs.find("*") == std::string::npos && lhs == rhs) {
+			return "BOOL";
+		}
+		return "";
 	}
 	else if (type == "NOT") {
 		std::string lhs = checkType(node->children[0], curr_type, scopes, arrays, functions, isFuncVariadic);
