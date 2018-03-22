@@ -39,7 +39,6 @@ bool matchFuncArgs(std::vector<std::string> def_params, std::vector<treeNode*> g
 
 	for (int i = 0; i < given_params.size(); i++) {
 		if (def_params[i] != given_params[i]->children[0]->type) {
-			std::cout << def_params[i] << given_params[i] << std::endl;
 			chk2 = false;
 			break;
 		}
@@ -56,7 +55,6 @@ bool matchFuncUseArgs(std::vector<std::string> def_params, std::vector<std::stri
 
 	for (int i = 0; i < given_params.size(); i++) {
 		if (def_params[i] != given_params[i]) {
-			std::cout << def_params[i] << given_params[i] << std::endl;
 			chk2 = false;
 			break;
 		}
@@ -276,6 +274,7 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 				return "";
 			}
 
+			// for functions
 			auto it = functions.find(name);
 			/* 
 				since decl before use is checked, we assume function is defined
@@ -305,6 +304,10 @@ std::string checkType(treeNode* node, std::string curr_type, std::stack<scope> &
 		}
 		else {
 			std::string typ = scopes.top().find_symbol_type(((IdentNode*)(node))->name);
+			if (node->children.size() > 0 && node->children[0]->type == "[ ]") {
+				// indexing into a pointer
+				typ.pop_back();
+			}
 			return typ; 
 		}
 
