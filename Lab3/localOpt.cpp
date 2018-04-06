@@ -17,7 +17,7 @@ void localOpt(LLVMModuleRef mod) {
 		BLOCK_TYPE currBlock = LLVMGetFirstBasicBlock(currFunction);
 
 		while (currBlock != NULL) {
-            localOptBasicBlock(currBlock, 1);
+            localOptBasicBlock(currBlock, 2);
 			currBlock = LLVMGetNextBasicBlock(currBlock);
 		}
 
@@ -78,18 +78,18 @@ void printMap(std::map<std::string, VALUE_TYPE> &propMap) {
 	}
 }
 
-// void constantFold() {
-// 	LLVMPositionBuilderBefore(globalBuilder, currInstruction);
-//     // VALUE_TYPE clone = LLVMInstructionClone(currInstruction);
-//     std::string curInstName(LLVMGetValueName(currInstruction));
-//     curInstName = "new_" + curInstName;
-//     printf("%s %s %d\n", curInstName.c_str(), "num ops: ", numOps );
-// 	VALUE_TYPE newInst = LLVMBuildBinOp(globalBuilder, (LLVMOpcode)opcode, LLVMGetOperand(currInstruction, 0), LLVMGetOperand(currInstruction, 1), curInstName.c_str());
-// 	LLVMInsertIntoBuilder(globalBuilder, newInst);
+void constantFold(VALUE_TYPE currInstruction, int opcode) {
+	LLVMPositionBuilderBefore(globalBuilder, currInstruction);
+    // VALUE_TYPE clone = LLVMInstructionClone(currInstruction);
+    std::string curInstName(LLVMGetValueName(currInstruction));
+    curInstName = "new_" + curInstName;
+    // printf("%s %s %d\n", curInstName.c_str(), "num ops: ", numOps );
+	VALUE_TYPE newInst = LLVMBuildBinOp(globalBuilder, (LLVMOpcode)opcode, LLVMGetOperand(currInstruction, 0), LLVMGetOperand(currInstruction, 1), curInstName.c_str());
+	// LLVMInsertIntoBuilder(globalBuilder, newInst);
 
-// 	// LLVMReplaceAllUsesWith(currInstruction, newInst);
-// 	// deadInstrs.push_back(currInstruction);
-// }
+	LLVMReplaceAllUsesWith(currInstruction, newInst);
+	// deadInstrs.push_back(currInstruction);
+}
 
 void localConstantPropagation(BLOCK_TYPE block) {
 
@@ -165,7 +165,9 @@ void localConstantPropagation(BLOCK_TYPE block) {
                 	}
                 }
 
-                
+                constantFold(currInstruction, opcode);
+
+                deadInstrs.push_back(currInstruction);
             }
             break;
         }
