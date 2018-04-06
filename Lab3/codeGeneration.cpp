@@ -1,4 +1,5 @@
 #include "codeGeneration.hpp"
+#include "localOpt.hpp"
 
 /*
  * CONTAINS CODE RELATED TO CODE GENERATION
@@ -867,6 +868,8 @@ void codegen(treeNode* AST) {
 	mod = LLVMModuleCreateWithNameInContext("my_module", globalContext);
 
 	AST->codegen();
+
+	localOpt(mod);
 
 	FILE *f = fopen("generated_code.txt", "w");
 	if (f == NULL)
