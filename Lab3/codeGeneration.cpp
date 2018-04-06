@@ -850,6 +850,19 @@ VALUE_TYPE CondBlockNode::codegen(DATATYPE_TYPE retTypeIfReqd, BLOCK_TYPE afterD
 	return NULL;
 }
 
+void printModule(LLVMModuleRef mod, std::string fname) {
+    FILE *f = fopen(fname.c_str(), "w");
+    if (f == NULL)
+    {
+        printf("Error opening file!\n");
+        exit(1);
+    }
+
+    fprintf(f, "%s\n", LLVMPrintModuleToString(mod));
+
+    fclose(f);
+}
+
 void codegen(treeNode* AST) {
 	LLVMContextRef globalContext = LLVMGetGlobalContext();
 	LLVMBuilderRef globalBuilder = LLVMCreateBuilderInContext(globalContext);
@@ -868,19 +881,10 @@ void codegen(treeNode* AST) {
 	mod = LLVMModuleCreateWithNameInContext("my_module", globalContext);
 
 	AST->codegen();
+    printModule(mod, "generated_code.txt");
 
 	localOpt(mod);
-
-	FILE *f = fopen("generated_code.txt", "w");
-	if (f == NULL)
-	{
-	    printf("Error opening file!\n");
-	    exit(1);
-	}
-
-	fprintf(f, "%s\n", LLVMPrintModuleToString(mod));
-
-	fclose(f);
+    printModule(mod, "optimised_code.txt");
 
     LLVMContextRef stackContext = contextStack.top();
 	LLVMBuilderRef stackBuilder = builderStack.top();
