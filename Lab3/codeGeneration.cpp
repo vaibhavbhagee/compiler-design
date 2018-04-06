@@ -12,6 +12,7 @@
 
 // global module
 LLVMModuleRef mod;
+LLVMBuilderRef globalBuilder;
 
 // symbol tables - function names, function args, local/global variables
 std::stack< std::map<std::string, FUNCTION_TYPE> > funcSymTable;
@@ -117,15 +118,13 @@ VALUE_TYPE useArray(treeNode* node, VALUE_TYPE array) {
 	VALUE_TYPE element_ptr = NULL;
 
 	if (arrFoundVal != NULL) { // get pointer to element of array at index 
-		base_ptr = LLVMBuildStructGEP(currBuilder, array, 0, tag.c_str());
-		element_ptr = LLVMBuildInBoundsGEP(currBuilder, base_ptr, &index, 1, "");
+		base_ptr = LLVMBuildStructGEP(currBuilder, array, 0, "_load_ptr_val");
+		element_ptr = LLVMBuildInBoundsGEP(currBuilder, base_ptr, &index, 1, tag.c_str());
 	}
 	else {
-		// printf("%s %s\n", "entered in pointer array access", name.c_str());
 		base_ptr = array;
-		
 		base_ptr = LLVMBuildLoad(currBuilder, array, "_load_ptr_val"); // loads the base pointer from pointer to pointer
-		element_ptr = LLVMBuildGEP(currBuilder, base_ptr, &index, 1, ""); // calculates the actual pointer of the offset
+		element_ptr = LLVMBuildGEP(currBuilder, base_ptr, &index, 1, tag.c_str()); // calculates the actual pointer of the offset
 	}
 
 	return element_ptr;
@@ -435,6 +434,7 @@ VALUE_TYPE getTypeZero(DATATYPE_TYPE type, std::string array_name="", int array_
 		return LLVMConstPointerNull(type);
 	}
 	else if (type_kind ==  LLVMArrayTypeKind) {
+        // global array
 		// VALUE_TYPE* init_vals = new VALUE_TYPE[array_length];
 		// // DATATYPE_TYPE elem_type = searchInArrTable(array_name, arrSymTable);
 		// DATATYPE_TYPE elem_type = LLVMInt32Type();
@@ -840,7 +840,7 @@ void printModule(LLVMModuleRef mod, std::string fname) {
 
 void codegen(treeNode* AST) {
 	LLVMContextRef globalContext = LLVMGetGlobalContext();
-	LLVMBuilderRef globalBuilder = LLVMCreateBuilderInContext(globalContext);
+	globalBuilder = LLVMCreateBuilderInContext(globalContext);
 	std::map<std::string, VALUE_TYPE> variableMap;
 	std::map<std::string, VALUE_TYPE> arrValMap;
 	std::map<std::string, VALUE_TYPE> argsMap;
