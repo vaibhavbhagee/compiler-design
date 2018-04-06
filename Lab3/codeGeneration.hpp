@@ -9,7 +9,7 @@
 #include "treeNode.hpp"
 
 extern LLVMModuleRef mod;
-extern LLVMBuilderRef builder;
+extern LLVMBuilderRef globalBuilder;
 extern std::stack< std::map<std::string, FUNCTION_TYPE> > funcSymTable;
 extern std::stack< std::map<std::string, VALUE_TYPE> > symTable;
 extern std::stack< LLVMContextRef > contextStack;

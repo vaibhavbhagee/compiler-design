@@ -12,6 +12,7 @@
 
 // global module
 LLVMModuleRef mod;
+LLVMBuilderRef globalBuilder;
 
 // symbol tables - function names, function args, local/global variables
 std::stack< std::map<std::string, FUNCTION_TYPE> > funcSymTable;
@@ -839,7 +840,7 @@ void printModule(LLVMModuleRef mod, std::string fname) {
 
 void codegen(treeNode* AST) {
 	LLVMContextRef globalContext = LLVMGetGlobalContext();
-	LLVMBuilderRef globalBuilder = LLVMCreateBuilderInContext(globalContext);
+	globalBuilder = LLVMCreateBuilderInContext(globalContext);
 	std::map<std::string, VALUE_TYPE> variableMap;
 	std::map<std::string, VALUE_TYPE> arrValMap;
 	std::map<std::string, VALUE_TYPE> argsMap;
