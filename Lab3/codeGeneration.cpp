@@ -117,44 +117,17 @@ VALUE_TYPE useArray(treeNode* node, VALUE_TYPE array) {
 	VALUE_TYPE element_ptr = NULL;
 
 	if (arrFoundVal != NULL) { // get pointer to element of array at index 
-		base_ptr = LLVMBuildStructGEP(currBuilder, array, 0, tag.c_str());
-		element_ptr = LLVMBuildInBoundsGEP(currBuilder, base_ptr, &index, 1, "");
+		base_ptr = LLVMBuildStructGEP(currBuilder, array, 0, "_load_ptr_val");
+		element_ptr = LLVMBuildInBoundsGEP(currBuilder, base_ptr, &index, 1, tag.c_str());
 	}
 	else {
-		// printf("%s %s\n", "entered in pointer array access", name.c_str());
 		base_ptr = array;
-		
 		base_ptr = LLVMBuildLoad(currBuilder, array, "_load_ptr_val"); // loads the base pointer from pointer to pointer
-		element_ptr = LLVMBuildGEP(currBuilder, base_ptr, &index, 1, ""); // calculates the actual pointer of the offset
+		element_ptr = LLVMBuildGEP(currBuilder, base_ptr, &index, 1, tag.c_str()); // calculates the actual pointer of the offset
 	}
 
 	return element_ptr;
 }
-
-// VALUE_TYPE usePtr(treeNode* node, VALUE_TYPE id) {
-// 	LLVMBuilderRef currBuilder = builderStack.top();
-
-// 	// get the code for index and load if needed
-// 	ConstNode* indexNode = new ConstNode(0);
-// 	LLVMValueRef index = indexNode->codegen();
-
-// 	// get the name and tag
-// 	treeNode* temp = node;
-// 	std::string tag = "";
-// 	while (temp->type != "Ident") {
-// 		temp = temp->children[0];
-// 		tag += "*";
-// 	}
-// 	std::string name = ((IdentNode*)temp)->name;
-// 	tag += name + "_";
-
-// 	// get pointer to element of ptr at index
-// 	printf("%s\n", tag.c_str());
-// 	LLVMValueRef base_ptr = LLVMBuildStructGEP(currBuilder, id, 0, tag.c_str());
-// 	LLVMValueRef element_ptr = LLVMBuildInBoundsGEP(currBuilder, base_ptr, &index, 1, "");
-
-// 	return base_ptr;
-// }
 
 VALUE_TYPE loadValueifNeeded(treeNode* node, VALUE_TYPE prev_val) {
 	// loads the value if its an id or a dereference, to be used for lhs vs rhs issues
@@ -460,6 +433,7 @@ VALUE_TYPE getTypeZero(DATATYPE_TYPE type, std::string array_name="", int array_
 		return LLVMConstPointerNull(type);
 	}
 	else if (type_kind ==  LLVMArrayTypeKind) {
+        // global array
 		// VALUE_TYPE* init_vals = new VALUE_TYPE[array_length];
 		// // DATATYPE_TYPE elem_type = searchInArrTable(array_name, arrSymTable);
 		// DATATYPE_TYPE elem_type = LLVMInt32Type();

@@ -14,8 +14,7 @@ void localOpt(LLVMModuleRef mod) {
 		BLOCK_TYPE currBlock = LLVMGetFirstBasicBlock(currFunction);
 
 		while (currBlock != NULL) {
-			localDeadCodeRemoval(currBlock);
-            localDeadCodeRemoval(currBlock);
+            localOptBasicBlock(currBlock);
 			currBlock = LLVMGetNextBasicBlock(currBlock);
 		}
 
@@ -69,40 +68,10 @@ void localDeadCodeRemoval(BLOCK_TYPE block) {
     }
 }
 
-void localOptBasicBlock(BLOCK_TYPE basicBlock) {
+void localOptBasicBlock(BLOCK_TYPE basicBlock, int passes=2) {
 
-	// Get the instruction of the basic block
-	VALUE_TYPE currInstruction = LLVMGetFirstInstruction(basicBlock);
-    int j = 0;
+    for (int i = 0; i < passes; i++) {
+        localDeadCodeRemoval(basicBlock);
+    }
 
-	while (currInstruction != NULL) {
-        j += 1;
-		printf("%s %d :", "INSTRUCTION", j);
-		printf("%s   num_ops:", LLVMPrintValueToString(currInstruction));
-
-		// Get the number of operands
-		int numOps = LLVMGetNumOperands(currInstruction);
-		printf("%d\n", numOps);
-
-		for (int i = 1; i < numOps; ++i) {
-			// VALUE_TYPE op = LLVMGetOperand(currInstruction, i);
-			LLVMUseRef u = LLVMGetOperandUse(currInstruction, i);
-
-			while (u != NULL) {
-				VALUE_TYPE uv = LLVMGetUsedValue(u);
-				VALUE_TYPE usv = LLVMGetUser(u);
-				printf("USE: %s\n", LLVMPrintValueToString(uv));
-				printf("USER: %s\n", LLVMPrintValueToString(usv));
-				u = LLVMGetNextUse(u);
-			}
-            printf("\n");
-
-			// printf("%s\n", LLVMPrintValueToString(op));
-		}
-
-		currInstruction = LLVMGetNextInstruction(currInstruction);
-		printf("%s\n", "");
-	}
-
-	printf("%s\n", "");
 }
