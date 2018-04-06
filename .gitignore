@@ -6,3 +6,5 @@ Lab3/c.lex.cpp
 Lab3/c.tab.hpp
 Lab3/c.tab.cpp
 Lab3/cc
+Lab3/test.c
+Lab3/generated_code.txt
