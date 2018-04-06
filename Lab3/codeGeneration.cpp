@@ -131,31 +131,6 @@ VALUE_TYPE useArray(treeNode* node, VALUE_TYPE array) {
 	return element_ptr;
 }
 
-// VALUE_TYPE usePtr(treeNode* node, VALUE_TYPE id) {
-// 	LLVMBuilderRef currBuilder = builderStack.top();
-
-// 	// get the code for index and load if needed
-// 	ConstNode* indexNode = new ConstNode(0);
-// 	LLVMValueRef index = indexNode->codegen();
-
-// 	// get the name and tag
-// 	treeNode* temp = node;
-// 	std::string tag = "";
-// 	while (temp->type != "Ident") {
-// 		temp = temp->children[0];
-// 		tag += "*";
-// 	}
-// 	std::string name = ((IdentNode*)temp)->name;
-// 	tag += name + "_";
-
-// 	// get pointer to element of ptr at index
-// 	printf("%s\n", tag.c_str());
-// 	LLVMValueRef base_ptr = LLVMBuildStructGEP(currBuilder, id, 0, tag.c_str());
-// 	LLVMValueRef element_ptr = LLVMBuildInBoundsGEP(currBuilder, base_ptr, &index, 1, "");
-
-// 	return base_ptr;
-// }
-
 VALUE_TYPE loadValueifNeeded(treeNode* node, VALUE_TYPE prev_val) {
 	// loads the value if its an id or a dereference, to be used for lhs vs rhs issues
 	LLVMBuilderRef currBuilder = builderStack.top();
