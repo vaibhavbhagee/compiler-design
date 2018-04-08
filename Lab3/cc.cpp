@@ -72,7 +72,7 @@ main(int argc, char **argv)
 
   // Parsing and AST generation
   int ret_val = yyparse();
-  printTree(ASTree);
+  // printTree(ASTree);
 
   // Semantic analysis to ensure a) Declaration before use and b) Type checking
   ret_val = semanticCheck(ASTree);
