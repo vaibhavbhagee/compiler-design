@@ -2,27 +2,11 @@
 #include <string>
 #include <cstring>
 
-void localOpt(LLVMModuleRef mod);
-void localDeadCodeRemoval(BLOCK_TYPE block);
-void localOptBasicBlock(BLOCK_TYPE basicBlock, int passes);
-void localConstantPropagation(BLOCK_TYPE block);
-
-void localOpt(LLVMModuleRef mod) {
-	// Get first function of the module ref
-
-	VALUE_TYPE currFunction = LLVMGetFirstFunction(mod);
-
-	while (currFunction != NULL) {
-		// Get all the basic blocks of this function and local optimise
-		BLOCK_TYPE currBlock = LLVMGetFirstBasicBlock(currFunction);
-
-		while (currBlock != NULL) {
-            localOptBasicBlock(currBlock, 2);
-			currBlock = LLVMGetNextBasicBlock(currBlock);
-		}
-
-		currFunction = LLVMGetNextFunction(currFunction);
-	}
+void printMap(std::map<std::string, VALUE_TYPE> &propMap) {
+    for (auto it = propMap.begin(); it != propMap.end(); ++it)
+    {
+        printf("%s %s\n", (it->first).c_str(), LLVMPrintValueToString(it->second));
+    }
 }
 
 void localDeadCodeRemoval(BLOCK_TYPE block) {
@@ -40,8 +24,8 @@ void localDeadCodeRemoval(BLOCK_TYPE block) {
         switch (opcode) {
             case LLVMStore:
             {
-                LLVMUseRef lhs = LLVMGetOperandUse(currInstruction, 1);
-                LLVMUseRef first_use = LLVMGetFirstUse(LLVMGetUsedValue(lhs));
+                VALUE_TYPE lhs = LLVMGetOperand(currInstruction, 1);
+                LLVMUseRef first_use = LLVMGetFirstUse(lhs);
                 LLVMUseRef next = LLVMGetNextUse(first_use);
                 
                 if (next == NULL) { // no further usage
@@ -53,9 +37,14 @@ void localDeadCodeRemoval(BLOCK_TYPE block) {
             case LLVMAlloca:
             {
                 LLVMUseRef first_use = LLVMGetFirstUse(currInstruction);
-                LLVMUseRef next = LLVMGetNextUse(first_use);
-                
-                if (next == NULL) { // no further usage
+                if (first_use == NULL) { // no usage of allocated var
+                    deadInstrs.push_back(currInstruction);
+                    break;
+                }
+
+                // no further usage
+                LLVMUseRef next = LLVMGetNextUse(first_use);                
+                if (next == NULL) {
                     deadInstrs.push_back(currInstruction);
                 }
             }
@@ -71,105 +60,96 @@ void localDeadCodeRemoval(BLOCK_TYPE block) {
     }
 }
 
-void printMap(std::map<std::string, VALUE_TYPE> &propMap) {
-	for (auto it = propMap.begin(); it != propMap.end(); ++it)
-	{
-		printf("%s %s\n", (it->first).c_str(), LLVMPrintValueToString(it->second));
-	}
-}
+bool constantFold(BLOCK_TYPE block, VALUE_TYPE currInstruction) {
+    int opcode = LLVMGetInstructionOpcode(currInstruction);
+    switch (opcode) {
+        case LLVMAdd:
+        case LLVMFAdd:
+        case LLVMSub:
+        case LLVMFSub:
+        case LLVMMul:
+        case LLVMFMul:
+        case LLVMSDiv:
+        case LLVMFDiv:
+        case LLVMSRem:
+        case LLVMFRem:
+        case LLVMAnd:
+        case LLVMOr:
+        case LLVMXor:
+        {
+            // get the operands
+            VALUE_TYPE op1 = LLVMGetOperand(currInstruction, 0);
+            VALUE_TYPE op2 = LLVMGetOperand(currInstruction, 1);
 
-void constantFold(VALUE_TYPE currInstruction, int opcode) {
-	LLVMPositionBuilderBefore(globalBuilder, currInstruction);
-    // VALUE_TYPE clone = LLVMInstructionClone(currInstruction);
-    std::string curInstName(LLVMGetValueName(currInstruction));
-    curInstName = "new_" + curInstName;
-    // printf("%s %s %d\n", curInstName.c_str(), "num ops: ", numOps );
-	VALUE_TYPE newInst = LLVMBuildBinOp(globalBuilder, (LLVMOpcode)opcode, LLVMGetOperand(currInstruction, 0), LLVMGetOperand(currInstruction, 1), curInstName.c_str());
-	// LLVMInsertIntoBuilder(globalBuilder, newInst);
-
-	LLVMReplaceAllUsesWith(currInstruction, newInst);
-	// deadInstrs.push_back(currInstruction);
+            if (LLVMIsConstant(op1) && LLVMIsConstant(op2)) { // if both constants, evaluate result and replace
+                VALUE_TYPE newInst = LLVMBuildBinOp(globalBuilder, (LLVMOpcode)opcode, op1, op2, "");
+                LLVMReplaceAllUsesWith(currInstruction, newInst);
+                return true;
+            }
+        }
+        break;
+    }
+    return false;
 }
 
 void localConstantPropagation(BLOCK_TYPE block) {
-
-	std::map<std::string, VALUE_TYPE> propMap;
+    std::map<std::string, VALUE_TYPE> propMap;
 
     // iterate over all the instructions
     std::vector<VALUE_TYPE> deadInstrs;
     VALUE_TYPE currInstruction = LLVMGetFirstInstruction(block);
 
     while (currInstruction != NULL) {
-        /*
-            - LHS of assign not used again ever
-            - Allocated variable never used
-        */
-    	// printf("%s\n", LLVMPrintValueToString(currInstruction));
+
         int opcode = LLVMGetInstructionOpcode(currInstruction);
         switch (opcode) {
-            case LLVMStore:
+            case LLVMStore: // if rhs is constant, update value in map
             {
-                LLVMUseRef lhs = LLVMGetOperandUse(currInstruction, 1);
-                LLVMUseRef rhs = LLVMGetOperandUse(currInstruction, 0);
-                VALUE_TYPE useVal = LLVMGetUsedValue(lhs);
-                VALUE_TYPE maybeConstVal = LLVMGetUsedValue(rhs);
-                std::string valName(LLVMGetValueName(useVal));
+                VALUE_TYPE lhs = LLVMGetOperand(currInstruction, 1);
+                VALUE_TYPE rhs = LLVMGetOperand(currInstruction, 0);
+                std::string valName(LLVMGetValueName(lhs));
 
-                if (LLVMIsConstant(maybeConstVal)) {
-                	propMap[valName] = maybeConstVal;
-
-                	// printMap(propMap);
+                if (LLVMIsConstant(rhs)) {
+                	propMap[valName] = rhs;
                 }
             }
             break;
-            case LLVMLoad:
+
+            case LLVMLoad: // if lhs is in map, get value from that and remove load
             {
-                LLVMUseRef lhs = LLVMGetOperandUse(currInstruction, 0);
-                VALUE_TYPE useVal = LLVMGetUsedValue(lhs);
-                std::string valName(LLVMGetValueName(useVal));
-                std::string curInstName(LLVMGetValueName(currInstruction));
+                VALUE_TYPE lhs = LLVMGetOperand(currInstruction, 0);
+                std::string valName(LLVMGetValueName(lhs));
+                std::string currInstName(LLVMGetValueName(currInstruction));
 
                 if (propMap.find(valName) != propMap.end()) {
-                	propMap[curInstName] = propMap[valName];
+                	propMap[currInstName] = propMap[valName];
                 	deadInstrs.push_back(currInstruction);
                 }
             }
             break;
+
             case LLVMAlloca:
             case LLVMGetElementPtr:
             break;
-            case LLVMAdd:
-            case LLVMFAdd:
-            case LLVMSub:
-            case LLVMFSub:
-            case LLVMMul:
-            case LLVMFMul:
-            case LLVMSDiv:
-            case LLVMFDiv:
-            case LLVMSRem:
-            case LLVMFRem:
-            case LLVMAnd:
-            case LLVMOr:
-            case LLVMXor:
-            {
-                int numOps = LLVMGetNumOperands(currInstruction);
 
+            default:
+            {
+                // replace with constants in each operand
+                int numOps = LLVMGetNumOperands(currInstruction);
                 for (int i = 0; i < numOps; ++i) {
                 	VALUE_TYPE op = LLVMGetOperand(currInstruction, i);
                 	std::string opName(LLVMGetValueName(op));
 
                 	if (propMap.find(opName) != propMap.end()) {
-                		// printf("%s\n", "Replacing");
                 		LLVMSetOperand(currInstruction, i, propMap[opName]);
-                		// deadInstrs.push_back(currInstruction);		
                 	}
                 }
-
-                constantFold(currInstruction, opcode);
-
-                deadInstrs.push_back(currInstruction);
             }
-            break;
+        }
+
+        // fold constants
+        if (constantFold(block, currInstruction)) {
+            deadInstrs.push_back(currInstruction);
         }
         
         currInstruction = LLVMGetNextInstruction(currInstruction);
@@ -181,12 +161,32 @@ void localConstantPropagation(BLOCK_TYPE block) {
     }
 }
 
-void localOptBasicBlock(BLOCK_TYPE basicBlock, int passes=2) {
+
+
+void localOptBasicBlock(BLOCK_TYPE basicBlock, int passes) {
 
     for (int i = 0; i < passes; i++) {
         localDeadCodeRemoval(basicBlock);
         localConstantPropagation(basicBlock);
-        // localConstantPropagation(basicBlock);
+        // constantFold(basicBlock);
     }
 
+}
+
+void localOpt(LLVMModuleRef mod) {
+    // Get first function of the module ref
+
+    VALUE_TYPE currFunction = LLVMGetFirstFunction(mod);
+
+    while (currFunction != NULL) {
+        // Get all the basic blocks of this function and local optimise
+        BLOCK_TYPE currBlock = LLVMGetFirstBasicBlock(currFunction);
+
+        while (currBlock != NULL) {
+            localOptBasicBlock(currBlock, 1);
+            currBlock = LLVMGetNextBasicBlock(currBlock);
+        }
+
+        currFunction = LLVMGetNextFunction(currFunction);
+    }
 }
