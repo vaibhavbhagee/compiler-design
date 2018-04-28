@@ -1,5 +1,6 @@
 #include "codeGeneration.hpp"
 #include "localOpt.hpp"
+#include "optPasses.hpp"
 
 /*
  * CONTAINS CODE RELATED TO CODE GENERATION
@@ -12,7 +13,6 @@
 
 // global module
 LLVMModuleRef mod;
-LLVMBuilderRef globalBuilder;
 
 // symbol tables - function names, function args, local/global variables
 std::stack< std::map<std::string, FUNCTION_TYPE> > funcSymTable;
@@ -248,8 +248,9 @@ VALUE_TYPE treeNode::codegen() {
 			if (children[i]->type == "decl") {
 				((DeclNode*)children[i])->codegen(true);
 			}
-			else
+			else{
 				children[i]->codegen();
+            }
 		}
 		return NULL;
 	}
@@ -840,7 +841,7 @@ void printModule(LLVMModuleRef mod, std::string fname) {
 
 void codegen(treeNode* AST) {
 	LLVMContextRef globalContext = LLVMGetGlobalContext();
-	globalBuilder = LLVMCreateBuilderInContext(globalContext);
+	LLVMBuilderRef globalBuilder = LLVMCreateBuilderInContext(globalContext);
 	std::map<std::string, VALUE_TYPE> variableMap;
 	std::map<std::string, VALUE_TYPE> arrValMap;
 	std::map<std::string, VALUE_TYPE> argsMap;
@@ -858,7 +859,10 @@ void codegen(treeNode* AST) {
 	AST->codegen();
     printModule(mod, "generated_code.txt");
 
-	localOpt(mod);
+	localOpt(mod, globalBuilder);
+    printModule(mod, "optimised_code.txt");
+
+    optPasses(mod);
     printModule(mod, "optimised_code.txt");
 
     LLVMContextRef stackContext = contextStack.top();

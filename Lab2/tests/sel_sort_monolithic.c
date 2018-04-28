@@ -11,7 +11,6 @@ int main(int argc, char **argv)
 	size = 9;
 
 	int i;
-	// int a[10];
 
 	for (i = size; i >= 0; i--)
 	{

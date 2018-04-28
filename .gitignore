@@ -1,4 +1,4 @@
-.gitignore.sw*
+*.sw*
 Lab2/examples/*
 c.lex.cpp
 c.tab.hpp

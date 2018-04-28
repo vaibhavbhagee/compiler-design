@@ -9,7 +9,7 @@ void printMap(std::map<std::string, VALUE_TYPE> &propMap) {
     }
 }
 
-void localDeadCodeRemoval(BLOCK_TYPE block) {
+void localDeadCodeRemoval(BLOCK_TYPE block, LLVMBuilderRef globalBuilder) {
 
     // iterate over all the instructions
     std::vector<VALUE_TYPE> deadInstrs;
@@ -60,7 +60,7 @@ void localDeadCodeRemoval(BLOCK_TYPE block) {
     }
 }
 
-bool constantFold(BLOCK_TYPE block, VALUE_TYPE currInstruction) {
+bool constantFold(BLOCK_TYPE block, VALUE_TYPE currInstruction, LLVMBuilderRef globalBuilder) {
     int opcode = LLVMGetInstructionOpcode(currInstruction);
     switch (opcode) {
         case LLVMAdd:
@@ -92,7 +92,7 @@ bool constantFold(BLOCK_TYPE block, VALUE_TYPE currInstruction) {
     return false;
 }
 
-void localConstantPropagation(BLOCK_TYPE block) {
+void localConstantPropagation(BLOCK_TYPE block, LLVMBuilderRef globalBuilder) {
     std::map<std::string, VALUE_TYPE> propMap;
 
     // iterate over all the instructions
@@ -148,7 +148,7 @@ void localConstantPropagation(BLOCK_TYPE block) {
         }
 
         // fold constants
-        if (constantFold(block, currInstruction)) {
+        if (constantFold(block, currInstruction, globalBuilder)) {
             deadInstrs.push_back(currInstruction);
         }
         
@@ -161,21 +161,18 @@ void localConstantPropagation(BLOCK_TYPE block) {
     }
 }
 
-
-
-void localOptBasicBlock(BLOCK_TYPE basicBlock, int passes) {
+void localOptBasicBlock(BLOCK_TYPE basicBlock, int passes, LLVMBuilderRef globalBuilder) {
 
     for (int i = 0; i < passes; i++) {
-        localDeadCodeRemoval(basicBlock);
-        localConstantPropagation(basicBlock);
-        // constantFold(basicBlock);
+        localDeadCodeRemoval(basicBlock, globalBuilder);
+        localConstantPropagation(basicBlock, globalBuilder);
     }
 
 }
 
-void localOpt(LLVMModuleRef mod) {
+void localOpt(LLVMModuleRef mod, LLVMBuilderRef globalBuilder) {
+    
     // Get first function of the module ref
-
     VALUE_TYPE currFunction = LLVMGetFirstFunction(mod);
 
     while (currFunction != NULL) {
@@ -183,7 +180,7 @@ void localOpt(LLVMModuleRef mod) {
         BLOCK_TYPE currBlock = LLVMGetFirstBasicBlock(currFunction);
 
         while (currBlock != NULL) {
-            localOptBasicBlock(currBlock, 1);
+            localOptBasicBlock(currBlock, 1, globalBuilder);
             currBlock = LLVMGetNextBasicBlock(currBlock);
         }
 
