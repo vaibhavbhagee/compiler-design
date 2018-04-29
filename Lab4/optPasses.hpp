@@ -4,6 +4,6 @@
 #include "llvmHeaders.hpp"
 #include "treeNode.hpp"
 
-void optPasses(LLVMModuleRef mod);
+void optPasses(LLVMModuleRef mod, LLVMBuilderRef globalBuilder);
 
 #endif

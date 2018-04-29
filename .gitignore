@@ -1,5 +1,7 @@
 *.sw*
 Lab2/examples/*
+Lab3/examples/*
+Lab4/examples/*
 c.lex.cpp
 c.tab.hpp
 c.tab.cpp
