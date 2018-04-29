@@ -858,7 +858,7 @@ void codegen(treeNode* AST) {
 	AST->codegen();
     printModule(mod, "generated_code.txt");
 
-	localOpt(mod);
+	localOpt(mod, globalBuilder);
     printModule(mod, "optimised_code.txt");
 
     LLVMContextRef stackContext = contextStack.top();

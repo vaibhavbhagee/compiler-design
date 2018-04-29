@@ -26,9 +26,14 @@ void localDeadCodeRemoval(BLOCK_TYPE block, LLVMBuilderRef globalBuilder) {
             {
                 VALUE_TYPE lhs = LLVMGetOperand(currInstruction, 1);
                 LLVMUseRef first_use = LLVMGetFirstUse(lhs);
+                // the first use of instruction is array assignment
+                if (LLVMGetInstructionOpcode(LLVMGetUsedValue(first_use)) == LLVMGetElementPtr) {
+                    break;
+                }
+
+                // check further usage
                 LLVMUseRef next = LLVMGetNextUse(first_use);
-                
-                if (next == NULL) { // no further usage
+                if (next == NULL) { 
                     deadInstrs.push_back(currInstruction);
                 }
             }
