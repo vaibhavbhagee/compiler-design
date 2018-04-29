@@ -862,7 +862,7 @@ void codegen(treeNode* AST) {
 	localOpt(mod, globalBuilder);
     printModule(mod, "optimised_code.txt");
 
-    optPasses(mod);
+    optPasses(mod, globalBuilder);
     printModule(mod, "optimised_code.txt");
 
     LLVMContextRef stackContext = contextStack.top();
