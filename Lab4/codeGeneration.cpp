@@ -1,6 +1,7 @@
 #include "codeGeneration.hpp"
 #include "localOpt.hpp"
 #include "optPasses.hpp"
+#include "utils.hpp"
 
 /*
  * CONTAINS CODE RELATED TO CODE GENERATION

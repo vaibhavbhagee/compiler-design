@@ -2,6 +2,7 @@
 Lab2/examples/*
 Lab3/examples/*
 Lab4/examples/*
+ssa.txt
 c.lex.cpp
 c.tab.hpp
 c.tab.cpp
