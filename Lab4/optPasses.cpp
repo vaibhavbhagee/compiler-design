@@ -4,16 +4,18 @@
 #include <map>
 
 void copyPropagationFunction(VALUE_TYPE currFunction, LLVMBuilderRef globalBuilder);
-void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, std::map<std::string, VALUE_TYPE>& propMap);
-void copyPropagationAnalysisBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, std::map<std::string, VALUE_TYPE>& propMap);
+void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, std::map<std::string, VALUE_TYPE>& propMap, std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > &deadInstrs);
+void copyPropagationAnalysisBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, std::map<std::string, VALUE_TYPE>& propMap, std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > &deadInstrs);
 
 void optPasses(LLVMModuleRef mod, LLVMBuilderRef globalBuilder) {
     // prepare function pass manager and all the passes
     PASSMANAGER_TYPE funcPassManager = LLVMCreateFunctionPassManagerForModule(mod);
 
-    // add passes - Mem2Reg, const fold, cse, copy prop, dce, code motion(pre)
+    // Mem2Reg - full SSA
+    LLVMAddPromoteMemoryToRegisterPass(funcPassManager);
+    
+    // add passes - const fold, cse, copy prop, dce, code motion(pre)
     for (int i = 0; i < 2; i++) {
-        LLVMAddPromoteMemoryToRegisterPass(funcPassManager);
         // LLVMAddConstantPropagationPass(funcPassManager);
         // LLVMAddBitTrackingDCEPass(funcPassManager);
         // LLVMAddDeadStoreEliminationPass(funcPassManager);
@@ -42,136 +44,70 @@ void optPasses(LLVMModuleRef mod, LLVMBuilderRef globalBuilder) {
 void copyPropagationFunction(VALUE_TYPE currFunction, LLVMBuilderRef globalBuilder) {
     BLOCK_TYPE currBlock = LLVMGetFirstBasicBlock(currFunction);
     std::map<std::string, VALUE_TYPE> propMap;
+    std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > deadInstrs;
 
     while (currBlock != NULL) {
-        copyPropagationAnalysisBasicBlock(currBlock, globalBuilder, propMap);
+        copyPropagationAnalysisBasicBlock(currBlock, globalBuilder, propMap, deadInstrs);
         currBlock = LLVMGetNextBasicBlock(currBlock);
     }
 
     currBlock = LLVMGetFirstBasicBlock(currFunction);
 
     while (currBlock != NULL) {
-        copyPropagationBasicBlock(currBlock, globalBuilder, propMap);
+        copyPropagationBasicBlock(currBlock, globalBuilder, propMap, deadInstrs);
         currBlock = LLVMGetNextBasicBlock(currBlock);
+    }
+
+    for (auto it = deadInstrs.begin(); it != deadInstrs.end(); ++it)
+    {
+        for (auto deadInstr : (it->second)) {
+            LLVMInstructionEraseFromParent(deadInstr);
+        }
     }
 }
 
-void copyPropagationAnalysisBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, std::map<std::string, VALUE_TYPE>& propMap) {
-    // std::map<std::string, VALUE_TYPE> propMap;
-
+void copyPropagationAnalysisBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, std::map<std::string, VALUE_TYPE>& propMap, std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > &deadInstrs) {
     // iterate over all the instructions
-    std::vector<VALUE_TYPE> deadInstrs;
     VALUE_TYPE currInstruction = LLVMGetFirstInstruction(block);
 
     while (currInstruction != NULL) {
 
         int opcode = LLVMGetInstructionOpcode(currInstruction);
         switch (opcode) {
-            // case LLVMStore: // if rhs is constant, update value in map
-            // {
-            //     VALUE_TYPE lhs = LLVMGetOperand(currInstruction, 1);
-            //     VALUE_TYPE rhs = LLVMGetOperand(currInstruction, 0);
-            //     std::string valName(LLVMGetValueName(lhs));
-
-            //     // if (LLVMIsConstant(rhs)) {
-            //         propMap[valName] = rhs;
-            //     // }
-            // }
-            // break;
-
-            case LLVMLoad: // if lhs is in map, get value from that and remove load
+            case LLVMLoad:
             {
                 VALUE_TYPE lhs = LLVMGetOperand(currInstruction, 0);
-                VALUE_TYPE rhs = LLVMGetOperand(currInstruction, 1);
+                
                 std::string valName(LLVMGetValueName(lhs));
                 std::string currInstName(LLVMGetValueName(currInstruction));
 
-                // if (propMap.find(valName) != propMap.end()) {
-                //     propMap[currInstName] = propMap[valName];
-                //     deadInstrs.push_back(currInstruction);
-                // }
+                // printf("%s, %s, %s\n", LLVMPrintValueToString(lhs), currInstName.c_str(), valName.c_str());
+                // LLVMPrintValueToString(lhs);
+                // LLVMPrintValueToString(rhs);
 
-                propMap[valName] = rhs;
+                propMap[currInstName] = lhs;
 
                 // LLVMReplaceAllUsesWith(lhs, rhs);
-                deadInstrs.push_back(currInstruction);
+                deadInstrs[block].push_back(currInstruction);
             }
             break;
-
-            // case LLVMAlloca:
-            // case LLVMGetElementPtr:
-            // break;
-
             default:
                 break;
-            // {
-            //     // replace with constants in each operand
-            //     int numOps = LLVMGetNumOperands(currInstruction);
-            //     for (int i = 0; i < numOps; ++i) {
-            //         VALUE_TYPE op = LLVMGetOperand(currInstruction, i);
-            //         std::string opName(LLVMGetValueName(op));
-
-            //         if (propMap.find(opName) != propMap.end()) {
-            //             LLVMSetOperand(currInstruction, i, propMap[opName]);
-            //         }
-            //     }
-            // }
         }
-
-        // fold constants
-        // if (constantFold(block, currInstruction, globalBuilder)) {
-        //     deadInstrs.push_back(currInstruction);
-        // }
         
         currInstruction = LLVMGetNextInstruction(currInstruction);
     }
-
-    // remove all dead instructions
-    for (auto deadInstr : deadInstrs) {
-        LLVMInstructionEraseFromParent(deadInstr);
-    }
 }
 
-void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, std::map<std::string, VALUE_TYPE>& propMap) {
-    // std::map<std::string, VALUE_TYPE> propMap;
-
+void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, std::map<std::string, VALUE_TYPE>& propMap, std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > &deadInstrs) {
     // iterate over all the instructions
-    // std::vector<VALUE_TYPE> deadInstrs;
     VALUE_TYPE currInstruction = LLVMGetFirstInstruction(block);
 
     while (currInstruction != NULL) {
 
         int opcode = LLVMGetInstructionOpcode(currInstruction);
         switch (opcode) {
-            // case LLVMStore: // if rhs is constant, update value in map
-            // {
-            //     VALUE_TYPE lhs = LLVMGetOperand(currInstruction, 1);
-            //     VALUE_TYPE rhs = LLVMGetOperand(currInstruction, 0);
-            //     std::string valName(LLVMGetValueName(lhs));
-
-            //     // if (LLVMIsConstant(rhs)) {
-            //         propMap[valName] = rhs;
-            //     // }
-            // }
-            // break;
-
-            case LLVMLoad: // if lhs is in map, get value from that and remove load
-            // {
-            //     VALUE_TYPE lhs = LLVMGetOperand(currInstruction, 0);
-            //     VALUE_TYPE rhs = LLVMGetOperand(currInstruction, 1);
-            //     std::string valName(LLVMGetValueName(lhs));
-            //     std::string currInstName(LLVMGetValueName(currInstruction));
-
-            //     // if (propMap.find(valName) != propMap.end()) {
-            //     //     propMap[currInstName] = propMap[valName];
-            //     //     deadInstrs.push_back(currInstruction);
-            //     // }
-
-            //     propMap[valName] = rhs;
-
-            //     LLVMReplaceAllUsesWith(lhs, rhs);
-            //     deadInstrs.push_back(currInstruction);
-            // }
+            case LLVMLoad:
             break;
 
             // case LLVMAlloca:
@@ -179,31 +115,19 @@ void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, s
             // break;
 
             default:
-                break;
             {
                 // replace with constants in each operand
                 int numOps = LLVMGetNumOperands(currInstruction);
                 for (int i = 0; i < numOps; ++i) {
                     VALUE_TYPE op = LLVMGetOperand(currInstruction, i);
                     std::string opName(LLVMGetValueName(op));
-
+                    // printf("%s\n", LLVMPrintValueToString(op)/*, opName.c_str()*//*, valName.c_str()*/);
                     if (propMap.find(opName) != propMap.end()) {
                         LLVMSetOperand(currInstruction, i, propMap[opName]);
                     }
                 }
             }
-        }
-
-        // fold constants
-        // if (constantFold(block, currInstruction, globalBuilder)) {
-        //     deadInstrs.push_back(currInstruction);
-        // }
-        
+        }        
         currInstruction = LLVMGetNextInstruction(currInstruction);
     }
-
-    // remove all dead instructions
-    // for (auto deadInstr : deadInstrs) {
-    //     LLVMInstructionEraseFromParent(deadInstr);
-    // }
 }
