@@ -858,7 +858,7 @@ void codegen(treeNode* AST) {
 	mod = LLVMModuleCreateWithNameInContext("my_module", globalContext);
 
 	AST->codegen();
-    // printModule(mod, "generated_code.txt");
+    printModule(mod, "generated_code.txt");
 
 	// localOpt(mod, globalBuilder);
     // printModule(mod, "optimised_code.txt");

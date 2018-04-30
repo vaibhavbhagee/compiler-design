@@ -5,27 +5,14 @@
 #include <map>
 #include <unordered_set>
 #include <set>
-
-void printMap(std::map<std::string, VALUE_TYPE> &propMap) {
-    for (auto it = propMap.begin(); it != propMap.end(); ++it)
-    {
-        printf("%s %s\n", (it->first).c_str(), LLVMPrintValueToString(it->second));
-    }
-}
-
-void printMap2(std::map<VALUE_TYPE, VALUE_TYPE> &propMap) {
-    for (auto it = propMap.begin(); it != propMap.end(); ++it)
-    {
-        printf("%s %s\n", LLVMPrintValueToString(it->first), LLVMPrintValueToString(it->second));
-    }
-}
+#include <algorithm>
 
 
 void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, 
     std::unordered_set<BLOCK_TYPE> &path, 
     std::map<std::string, VALUE_TYPE>& propMap, 
     std::map<VALUE_TYPE, VALUE_TYPE> &varLoadedVarMap, 
-    std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > &deadInstrs) {
+    std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > &deadInstrs, std::vector<BLOCK_TYPE> &visited) {
 
     VALUE_TYPE term = LLVMGetBasicBlockTerminator(block);
     if (term == NULL) {
@@ -94,9 +81,15 @@ void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder,
     }
 
     // DFS
+    
     int numSucc = LLVMGetNumSuccessors(term);
     for (int i = 0; i < numSucc; ++i) {
         BLOCK_TYPE succBlk = LLVMGetSuccessor(term, i);
+        
+        if (std::find(visited.begin(), visited.end(), succBlk) != visited.end()){
+            continue;
+        }
+        visited.push_back(succBlk);
 
         if (path.find(succBlk) != path.end()) {
             // printf("%s\n", "Successor lies at a back edge");
@@ -104,7 +97,7 @@ void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder,
         }
 
         path.insert(block);
-        copyPropagationBasicBlock(succBlk, globalBuilder, path, propMap, varLoadedVarMap, deadInstrs);
+        copyPropagationBasicBlock(succBlk, globalBuilder, path, propMap, varLoadedVarMap, deadInstrs, visited);
         path.erase(block);
     }
 }
@@ -118,11 +111,15 @@ void copyPropagationFunction(VALUE_TYPE currFunction, LLVMBuilderRef globalBuild
     std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > deadInstrs;
 
     if (currBlock != NULL) {
-        copyPropagationBasicBlock(currBlock, globalBuilder, path, propMap, varLoadedVarMap, deadInstrs);
+        std::vector<BLOCK_TYPE> visited;
+        copyPropagationBasicBlock(currBlock, globalBuilder, path, propMap, varLoadedVarMap, deadInstrs, visited);
     }
 
     for (auto it = deadInstrs.begin(); it != deadInstrs.end(); ++it) {
         for (auto deadInstr : (it->second)) {
+            if (std::string(LLVMPrintValueToString(deadInstr)) != "  %load_j_19 = load i32, i32* %j") {
+                
+            }
             LLVMInstructionEraseFromParent(deadInstr);
         }
     }
@@ -229,7 +226,7 @@ void optPasses(LLVMModuleRef mod, LLVMBuilderRef globalBuilder) {
     LLVMAddPromoteMemoryToRegisterPass(funcPassManager);
 
     // add passes - Mem2Reg, const fold, cse, copy prop, dce, code motion(pre)
-    for (int i = 0; i < 2; i++) {
+    for (int pass = 1; pass < 2; pass++) {
         // LLVMAddConstantPropagationPass(funcPassManager);
         // LLVMAddBitTrackingDCEPass(funcPassManager);
         // LLVMAddDeadStoreEliminationPass(funcPassManager);
