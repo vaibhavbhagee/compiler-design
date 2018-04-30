@@ -1,11 +1,17 @@
 #include "optPasses.hpp"
+#include "utils.hpp"
 #include <string>
 #include <cstring>
 #include <map>
+#include <unordered_set>
+#include <set>
 
 void copyPropagationFunction(VALUE_TYPE currFunction, LLVMBuilderRef globalBuilder);
 void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, std::map<std::string, VALUE_TYPE>& propMap, std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > &deadInstrs);
 void copyPropagationAnalysisBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, std::map<std::string, VALUE_TYPE>& propMap, std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > &deadInstrs);
+
+void cseFunction(VALUE_TYPE currFunction, LLVMBuilderRef globalBuilder);
+void cseBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, std::unordered_set<BLOCK_TYPE> &path, std::set<VALUE_TYPE> propMap, std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > &deadInstrs);
 
 void optPasses(LLVMModuleRef mod, LLVMBuilderRef globalBuilder) {
     // prepare function pass manager and all the passes
@@ -33,10 +39,19 @@ void optPasses(LLVMModuleRef mod, LLVMBuilderRef globalBuilder) {
     VALUE_TYPE currFunction = LLVMGetFirstFunction(mod);
     while (currFunction != NULL) {
         LLVMRunFunctionPassManager(funcPassManager, currFunction);
-        copyPropagationFunction(currFunction, globalBuilder);
+        // copyPropagationFunction(currFunction, globalBuilder);
+        // cseFunction(currFunction, globalBuilder);
         currFunction = LLVMGetNextFunction(currFunction);
     }
     LLVMFinalizeFunctionPassManager(funcPassManager);
+
+    printModule(mod, "ssa.txt");
+
+    currFunction = LLVMGetFirstFunction(mod);
+    while (currFunction != NULL) {
+        cseFunction(currFunction, globalBuilder);
+        currFunction = LLVMGetNextFunction(currFunction);
+    }
 }
 
 void copyPropagationFunction(VALUE_TYPE currFunction, LLVMBuilderRef globalBuilder) {
@@ -129,5 +144,105 @@ void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, s
         }
         
         currInstruction = LLVMGetNextInstruction(currInstruction);
+    }
+}
+
+void cseFunction(VALUE_TYPE currFunction, LLVMBuilderRef globalBuilder) {
+    BLOCK_TYPE currBlock = LLVMGetEntryBasicBlock(currFunction);
+    
+    std::set<VALUE_TYPE> propMap;
+    std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > deadInstrs;
+    std::unordered_set<BLOCK_TYPE> path;
+
+    if (currBlock != NULL)
+        cseBasicBlock(currBlock, globalBuilder, path, propMap, deadInstrs);
+
+    for (auto it = deadInstrs.begin(); it != deadInstrs.end(); ++it)
+    {
+        for (auto deadInstr : (it->second)) {
+            LLVMInstructionEraseFromParent(deadInstr);
+        }
+    }
+}
+
+void cseBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, std::unordered_set<BLOCK_TYPE> &path, std::set<VALUE_TYPE> propMap, std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > &deadInstrs) {
+    VALUE_TYPE term = LLVMGetBasicBlockTerminator(block);
+    // printf("%s %s\n", "Terminator: ", LLVMPrintValueToString(term));
+
+    if (term == NULL)
+    {
+        printf("%s\n", "NULL TERMINATOR!");
+        return;
+    }
+
+    // Code for CSE
+
+    VALUE_TYPE currInstruction = LLVMGetFirstInstruction(block);
+
+    while (currInstruction != NULL) {
+
+        int opcode = LLVMGetInstructionOpcode(currInstruction);
+        switch (opcode) {
+            case LLVMAdd:
+            case LLVMFAdd:
+            case LLVMSub:
+            case LLVMFSub:
+            case LLVMMul:
+            case LLVMFMul:
+            case LLVMSDiv:
+            case LLVMFDiv:
+            case LLVMSRem:
+            case LLVMFRem:
+            case LLVMAnd:
+            case LLVMOr:
+            case LLVMXor:
+            {
+                // get the operands
+                VALUE_TYPE op1 = LLVMGetOperand(currInstruction, 0);
+                VALUE_TYPE op2 = LLVMGetOperand(currInstruction, 1);
+
+                bool ischanged = false;
+
+                for (auto it = propMap.begin(); it != propMap.end(); ++it)
+                {
+                    int checkOp = LLVMGetInstructionOpcode(*it);
+                    VALUE_TYPE checkOp1 = LLVMGetOperand(*it, 0);
+                    VALUE_TYPE checkOp2 = LLVMGetOperand(*it, 1);
+
+                    if (opcode != checkOp || op1 != checkOp1 || op2 != checkOp2) continue;
+
+                    LLVMReplaceAllUsesWith(currInstruction, *it);
+                    ischanged = true;
+                    deadInstrs[block].push_back(currInstruction);
+                    break;
+                }
+
+                if (!ischanged) propMap.insert(currInstruction);
+            }
+            break;
+
+            default:
+                break;
+        }
+        
+        currInstruction = LLVMGetNextInstruction(currInstruction);
+    }
+
+    // Code for DFS
+
+    int numSucc = LLVMGetNumSuccessors(term);
+
+    for (int i = 0; i < numSucc; ++i)
+    {
+        BLOCK_TYPE succBlk = LLVMGetSuccessor(term, i);
+
+        if (path.find(succBlk) != path.end()) {
+            printf("%s\n", "Successor lies at a back edge");
+            continue;
+        }
+
+        path.insert(block);
+        cseBasicBlock(succBlk, globalBuilder, path, propMap, deadInstrs);
+        path.erase(block);
     }
 }
