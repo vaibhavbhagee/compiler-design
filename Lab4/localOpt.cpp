@@ -2,13 +2,6 @@
 #include <string>
 #include <cstring>
 
-void printMap(std::map<std::string, VALUE_TYPE> &propMap) {
-    for (auto it = propMap.begin(); it != propMap.end(); ++it)
-    {
-        printf("%s %s\n", (it->first).c_str(), LLVMPrintValueToString(it->second));
-    }
-}
-
 void localDeadCodeRemoval(BLOCK_TYPE block, LLVMBuilderRef globalBuilder) {
 
     // iterate over all the instructions
