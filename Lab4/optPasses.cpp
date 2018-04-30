@@ -7,6 +7,8 @@ void copyPropagationFunction(VALUE_TYPE currFunction, LLVMBuilderRef globalBuild
 void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, std::map<std::string, VALUE_TYPE>& propMap, std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > &deadInstrs);
 void copyPropagationAnalysisBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, std::map<std::string, VALUE_TYPE>& propMap, std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > &deadInstrs);
 
+void cseFunction(VALUE_TYPE currFunction, LLVMBuilderRef globalBuilder);
+
 void optPasses(LLVMModuleRef mod, LLVMBuilderRef globalBuilder) {
     // prepare function pass manager and all the passes
     PASSMANAGER_TYPE funcPassManager = LLVMCreateFunctionPassManagerForModule(mod);
@@ -33,7 +35,8 @@ void optPasses(LLVMModuleRef mod, LLVMBuilderRef globalBuilder) {
     VALUE_TYPE currFunction = LLVMGetFirstFunction(mod);
     while (currFunction != NULL) {
         LLVMRunFunctionPassManager(funcPassManager, currFunction);
-        copyPropagationFunction(currFunction, globalBuilder);
+        // copyPropagationFunction(currFunction, globalBuilder);
+        cseFunction(currFunction, globalBuilder);
         currFunction = LLVMGetNextFunction(currFunction);
     }
     LLVMFinalizeFunctionPassManager(funcPassManager);
@@ -130,4 +133,33 @@ void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder, s
         
         currInstruction = LLVMGetNextInstruction(currInstruction);
     }
+}
+
+void cseFunction(VALUE_TYPE currFunction, LLVMBuilderRef globalBuilder) {
+    BLOCK_TYPE currBlock = LLVMGetFirstBasicBlock(currFunction);
+    std::map<std::string, VALUE_TYPE> propMap;
+    std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > deadInstrs;
+
+    while (currBlock != NULL) {
+        VALUE_TYPE term = LLVMGetBasicBlockTerminator(currBlock);
+        printf("%s\n", LLVMPrintValueToString(term));
+        currBlock = LLVMGetNextBasicBlock(currBlock);
+    }
+
+    // LLVMViewFunctionCFG(currFunction);
+    // LLVMVerifyFunction(currFunction, LLVMPrintMessageAction);
+
+    // currBlock = LLVMGetFirstBasicBlock(currFunction);
+
+    // while (currBlock != NULL) {
+    //     copyPropagationBasicBlock(currBlock, globalBuilder, propMap, deadInstrs);
+    //     currBlock = LLVMGetNextBasicBlock(currBlock);
+    // }
+
+    // for (auto it = deadInstrs.begin(); it != deadInstrs.end(); ++it)
+    // {
+    //     for (auto deadInstr : (it->second)) {
+    //         LLVMInstructionEraseFromParent(deadInstr);
+    //     }
+    // }
 }
