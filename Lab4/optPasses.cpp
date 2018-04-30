@@ -28,9 +28,8 @@ void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder,
     std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > &deadInstrs) {
 
     VALUE_TYPE term = LLVMGetBasicBlockTerminator(block);
-    printf("%s %s\n", "Terminator: ", LLVMPrintValueToString(term));
     if (term == NULL) {
-        printf("%s\n", "NULL TERMINATOR!");
+        // printf("%s\n", "NULL TERMINATOR!");
         return;
     }
 
@@ -70,7 +69,6 @@ void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder,
 
                     if (varLoadedVarMap.find(operand) != varLoadedVarMap.end()) {
                         // erase from the map, so next loaded var is propagated ahead
-                        printf("%s\n", LLVMPrintValueToString(operand));
                         varLoadedVarMap.erase(operand);
                     }
                 }
@@ -101,7 +99,7 @@ void copyPropagationBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder,
         BLOCK_TYPE succBlk = LLVMGetSuccessor(term, i);
 
         if (path.find(succBlk) != path.end()) {
-            printf("%s\n", "Successor lies at a back edge");
+            // printf("%s\n", "Successor lies at a back edge");
             continue;
         }
 
@@ -119,7 +117,7 @@ void copyPropagationFunction(VALUE_TYPE currFunction, LLVMBuilderRef globalBuild
     std::map<VALUE_TYPE, VALUE_TYPE> varLoadedVarMap;
     std::map<BLOCK_TYPE, std::vector<VALUE_TYPE> > deadInstrs;
 
-    while (currBlock != NULL) {
+    if (currBlock != NULL) {
         copyPropagationBasicBlock(currBlock, globalBuilder, path, propMap, varLoadedVarMap, deadInstrs);
     }
 
@@ -137,7 +135,7 @@ void cseBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder,
 
     VALUE_TYPE term = LLVMGetBasicBlockTerminator(block);
     if (term == NULL) {
-        printf("%s\n", "NULL TERMINATOR!");
+        // printf("%s\n", "NULL TERMINATOR!");
         return;
     }
 
@@ -196,7 +194,7 @@ void cseBasicBlock(BLOCK_TYPE block, LLVMBuilderRef globalBuilder,
         BLOCK_TYPE succBlk = LLVMGetSuccessor(term, i);
 
         if (path.find(succBlk) != path.end()) {
-            printf("%s\n", "Successor lies at a back edge");
+            // printf("%s\n", "Successor lies at a back edge");
             continue;
         }
 
@@ -252,7 +250,7 @@ void optPasses(LLVMModuleRef mod, LLVMBuilderRef globalBuilder) {
     while (currFunction != NULL) {
         LLVMRunFunctionPassManager(funcPassManager, currFunction);
         copyPropagationFunction(currFunction, globalBuilder);
-        // cseFunction(currFunction, globalBuilder);
+        cseFunction(currFunction, globalBuilder);
         currFunction = LLVMGetNextFunction(currFunction);
     }
     LLVMFinalizeFunctionPassManager(funcPassManager);
